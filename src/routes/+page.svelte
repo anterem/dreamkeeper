@@ -1,29 +1,39 @@
 <script lang="ts">
   import { invoke } from '@tauri-apps/api/core';
 
-  let path = $state('');
-  let pathError = $state('');
+  let saveFiles: string[] = $state([]);
+  let saveFilesError = $state('');
 
-  async function getAppdataPath() {
-    path = '';
-    pathError = '';
+  async function getSaveFiles() {
     try {
-      path = await invoke('get_appdata_path');
+      saveFiles = await invoke('get_save_files');
     } catch (e) {
-      if (e instanceof Error) pathError = e.toString();
-      else pathError = String(e);
+      saveFilesError = JSON.stringify(e);
     }
   }
+
+  $effect(() => {
+    getSaveFiles();
+  });
 </script>
 
 <main class="container">
   <h1>Dreamkeeper</h1>
 
-  <button type="button" onclick={getAppdataPath}>Get appdata path</button>
-  {#if pathError}
-    <p>{pathError}</p>
+  {#if saveFilesError}
+    <p>{saveFilesError}</p>
   {/if}
-  <p>Path: {path}</p>
+  {#if saveFiles.length === 1}
+    Save file found: {saveFiles[0]}
+  {/if}
+  {#if saveFiles.length > 1}
+    <p>Save files found:</p>
+    <ul>
+      {#each saveFiles as file}
+        <li>{file}</li>
+      {/each}
+    </ul>
+  {/if}
 </main>
 
 <style>

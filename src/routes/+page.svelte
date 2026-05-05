@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/core';
+  import { onMount } from 'svelte';
+  import { commands, type SaveFile } from '../lib/bindings';
+  import { formatTimestamp } from '../lib/utils';
 
-  let saveFiles: string[] = $state([]);
+  let saveFiles: SaveFile[] = $state([]);
   let saveFilesError = $state('');
 
   async function getSaveFiles() {
-    try {
-      saveFiles = await invoke('get_save_files');
-    } catch (e) {
-      saveFilesError = JSON.stringify(e);
-    }
+    let res = await commands.getSaveFiles();
+    if (res.status === 'ok') saveFiles = res.data;
+    else saveFilesError = JSON.stringify(res.error);
   }
 
-  $effect(() => {
+  onMount(() => {
     getSaveFiles();
   });
 </script>
@@ -22,15 +22,12 @@
 
   {#if saveFilesError}
     <p>{saveFilesError}</p>
-  {/if}
-  {#if saveFiles.length === 1}
-    Save file found: {saveFiles[0]}
-  {/if}
-  {#if saveFiles.length > 1}
-    <p>Save files found:</p>
+  {:else if saveFiles.length === 0}
+    No save file found.
+  {:else}
     <ul>
       {#each saveFiles as file}
-        <li>{file}</li>
+        <li>{file.storefront} ({formatTimestamp(file.lastModified)})</li>
       {/each}
     </ul>
   {/if}

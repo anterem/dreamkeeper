@@ -5,7 +5,7 @@ A companion app for Dreamlight Valley.
 ## Todo
 
 - [x] Locate save files
-- [ ] Read save file metadata
+- [x] Read save file metadata
 - [ ] Select save file
 - [ ] Decrypt and parse save file
 - [ ] Extract game state from save

@@ -5,7 +5,8 @@
     "": {
       "name": "dreamkeeper",
       "dependencies": {
-        "@fontsource/josefin-sans": "^5.2.8",
+        "@fontsource/im-fell-english": "^5.2.6",
+        "@fontsource/im-fell-english-sc": "^5.2.6",
         "@tauri-apps/api": "^2.11.0",
         "@tauri-apps/plugin-opener": "^2",
       },
@@ -76,7 +77,9 @@
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
 
-    "@fontsource/josefin-sans": ["@fontsource/josefin-sans@5.2.8", "", {}, "sha512-bGY9VWF01JQc5pAOF3+tLlm75dpwJrRhd5CzY3/oyksvdZQbtwOHSDuu20VGxbBDx2/JQdllNvSJFgqI4QGGqg=="],
+    "@fontsource/im-fell-english": ["@fontsource/im-fell-english@5.2.6", "", {}, "sha512-mVEuyEgLDyaChb0GvQRs5Pyg7SmB0RcPZqR8ub2OnskeiViIieBESRrS4Uovn1hxJ/Dh6xNRaLlmMtPeO8lWRQ=="],
+
+    "@fontsource/im-fell-english-sc": ["@fontsource/im-fell-english-sc@5.2.6", "", {}, "sha512-+uVXYFiAURkyvKKbkN/DyOs2PNIVt+/pIyax8FpVppxgpU676gRFp7eAUxdKBTPCT0zhM8UFaZ+IhCza0Vpl7w=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

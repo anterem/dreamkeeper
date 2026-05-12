@@ -1,10 +1,14 @@
 <script lang="ts">
+  import { page } from '$app/stores';
+  import PageHeader from '$lib/components/PageHeader.svelte';
   import '../app.css';
 
   let { children } = $props();
 </script>
 
 <div id="page">
+  <PageHeader title={$page.data.title} />
+
   <div class="page-inner">
     {@render children()}
   </div>

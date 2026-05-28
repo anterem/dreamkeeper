@@ -13,13 +13,20 @@
     else saveFilesError = JSON.stringify(res.error);
   }
 
+  $effect(() => {
+    if (saveFiles.length === 1) selectedSaveFile = saveFiles[0];
+  });
+
+  $effect(() => {
+    if (selectedSaveFile) commands.decryptSaveFile(selectedSaveFile.path);
+  });
+
   onMount(() => {
     getSaveFiles();
   });
 </script>
 
 <main>
-
   {#if saveFilesError}
     <p>An ill omen: <span class="error">{saveFilesError}</span></p>
   {:else if saveFiles.length === 0}

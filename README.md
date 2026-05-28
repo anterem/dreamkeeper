@@ -6,7 +6,7 @@ A companion app for Dreamlight Valley.
 
 - [x] Locate save files
 - [x] Read save file metadata
-- [ ] Select save file
+- [x] Select save file
 - [ ] Decrypt and parse save file
 - [ ] Extract game state from save
 - [ ] Add reference data for collections

@@ -24,6 +24,13 @@ pub struct SaveFile {
     modified_secs: u32,
 }
 
+#[tauri::command]
+#[specta::specta]
+fn decrypt_save_file(path: PathBuf) -> Result<(), AppError> {
+    println!("{}", path.display());
+    Ok(())
+}
+
 fn get_game_folder() -> PathBuf {
     get_known_folder_path(KnownFolder::LocalAppDataLow)
         .expect("LocalAppDataLow exists on Windows")
@@ -78,8 +85,11 @@ fn get_save_files() -> Result<Vec<SaveFile>, AppError> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let specta_builder = tauri_specta::Builder::<tauri::Wry>::new()
-        .commands(tauri_specta::collect_commands![get_save_files]);
+    let specta_builder =
+        tauri_specta::Builder::<tauri::Wry>::new().commands(tauri_specta::collect_commands![
+            get_save_files,
+            decrypt_save_file
+        ]);
 
     #[cfg(debug_assertions)]
     specta_builder

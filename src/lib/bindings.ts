@@ -5,6 +5,7 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	getSaveFiles: () => typedError<SaveFile[], AppError>(__TAURI_INVOKE("get_save_files")),
+	decryptSaveFile: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("decrypt_save_file", { path })),
 };
 
 /* Types */

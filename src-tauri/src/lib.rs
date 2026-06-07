@@ -1,13 +1,21 @@
+use cipher::{BlockModeDecrypt, KeyInit, block_padding::Pkcs7};
 use known_folders::{KnownFolder, get_known_folder_path};
 use std::{
+    fs::read,
+    io::{Cursor, Read},
     path::{Path, PathBuf},
     time::UNIX_EPOCH,
 };
+
+const KEY: [u8; 32] =
+    hex_literal::hex!("62357168683873614a38556c444a557a545a5864325467366d626f3857386e35");
 
 #[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
 pub enum AppError {
     #[error("I/O error: {0}")]
     Io(String),
+    #[error("Parse error: {0}")]
+    Parse(String),
 }
 
 impl From<std::io::Error> for AppError {
@@ -26,9 +34,27 @@ pub struct SaveFile {
 
 #[tauri::command]
 #[specta::specta]
-fn decrypt_save_file(path: PathBuf) -> Result<(), AppError> {
-    println!("{}", path.display());
-    Ok(())
+fn decrypt_save_file(path: PathBuf) -> Result<serde_json::Value, AppError> {
+    let ciphertext = read(&path)?;
+
+    let decryptor = ecb::Decryptor::<aes::Aes256>::new(&KEY.into());
+
+    let plaintext = decryptor
+        .decrypt_padded_vec::<Pkcs7>(&ciphertext)
+        .map_err(|e| AppError::Parse(e.to_string()))?;
+
+    let cursor = Cursor::new(plaintext);
+    let mut archive = zip::ZipArchive::new(cursor).map_err(|e| AppError::Parse(e.to_string()))?;
+    let mut save_file = archive
+        .by_index(0)
+        .map_err(|e| AppError::Parse(e.to_string()))?;
+
+    let mut contents = String::new();
+    save_file
+        .read_to_string(&mut contents)
+        .map_err(|e| AppError::Parse(e.to_string()))?;
+
+    serde_json::from_str(&contents).map_err(|e| AppError::Parse(e.to_string()))
 }
 
 fn get_game_folder() -> PathBuf {

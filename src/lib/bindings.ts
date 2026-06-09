@@ -6,16 +6,19 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 export const commands = {
 	getSaveFiles: () => typedError<SaveFile[], AppError>(__TAURI_INVOKE("get_save_files")),
 	decryptSaveFile: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("decrypt_save_file", { path })),
+	getGameData: (storefront: Storefront) => typedError<{ [key in number]: string }, AppError>(__TAURI_INVOKE("get_game_data", { storefront })),
 };
 
 /* Types */
-export type AppError = { Io: string };
+export type AppError = ({ Io: string }) & { Parse?: never } | ({ Parse: string }) & { Io?: never };
 
 export type SaveFile = {
 	path: string,
-	storefront: string,
+	storefront: Storefront,
 	lastModified: number,
 };
+
+export type Storefront = "steam" | "epic" | "microsoft";
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
@@ -26,4 +29,3 @@ async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; dat
         return { status: "error", error: e as any };
     }
 }
-

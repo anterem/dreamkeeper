@@ -32,4 +32,6 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-specta = { version = "2.0.0-rc.24", features = ["typescript"] }
 thiserror = "2.0.18"
+winreg = "0.56.0"
 zip = "8.6.0"
+chrono = "0.4"

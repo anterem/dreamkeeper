@@ -7,6 +7,8 @@ use std::{
     time::UNIX_EPOCH,
 };
 
+mod game_data;
+
 const KEY: [u8; 32] =
     hex_literal::hex!("62357168683873614a38556c444a557a545a5864325467366d626f3857386e35");
 
@@ -27,7 +29,7 @@ impl From<std::io::Error> for AppError {
 #[derive(serde::Serialize, specta::Type)]
 pub struct SaveFile {
     path: PathBuf,
-    storefront: String,
+    storefront: game_data::Storefront,
     #[serde(rename = "lastModified")]
     modified_secs: u32,
 }
@@ -95,7 +97,8 @@ fn get_save_files() -> Result<Vec<SaveFile>, AppError> {
                 .split('_')
                 .next()
                 .unwrap()
-                .to_string();
+                .parse()
+                .ok()?;
             let modified_secs = get_modified_secs(&save_file_path).unwrap_or(0);
 
             Some(SaveFile {
@@ -114,7 +117,8 @@ pub fn run() {
     let specta_builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(tauri_specta::collect_commands![
             get_save_files,
-            decrypt_save_file
+            decrypt_save_file,
+            game_data::get_game_data,
         ]);
 
     #[cfg(debug_assertions)]

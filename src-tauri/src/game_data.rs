@@ -3,7 +3,7 @@ use std::{
     fs::read,
     io::{Cursor, Read},
     path::PathBuf,
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 use winreg::{RegKey, enums};
 use zip::ZipArchive;
@@ -29,25 +29,30 @@ impl std::str::FromStr for Storefront {
     }
 }
 
-fn read_varint(data: &[u8], pos: &mut usize) -> u64 {
+// don't crash on unexpected format
+fn read_varint(data: &[u8], pos: &mut usize) -> Option<u64> {
     let mut result = 0u64;
     let mut shift = 0;
     loop {
-        let byte = data[*pos];
+        let byte = *data.get(*pos)?;
         *pos += 1;
         result |= ((byte & 0x7f) as u64) << shift;
         if byte & 0x80 == 0 {
-            return result;
+            return Some(result);
         }
         shift += 7;
+        if shift >= 64 {
+            return None;
+        }
     }
 }
 
-fn read_bytes<'a>(data: &'a [u8], pos: &mut usize) -> &'a [u8] {
-    let len = read_varint(data, pos) as usize;
-    let start = *pos;
-    *pos += len;
-    &data[start..start + len]
+fn read_bytes<'a>(data: &'a [u8], pos: &mut usize) -> Option<&'a [u8]> {
+    let len = read_varint(data, pos)? as usize;
+    let end = (*pos).checked_add(len)?;
+    let slice = data.get(*pos..end)?;
+    *pos = end;
+    Some(slice)
 }
 
 fn parse_vdf_paths(content: &str) -> Vec<String> {
@@ -220,7 +225,10 @@ fn parse_id_map(bytes: &[u8]) -> HashMap<u32, String> {
         }
 
         pos = id_start;
-        let id = read_varint(bytes, &mut pos) as u32;
+        let Some(id) = read_varint(bytes, &mut pos) else {
+            break;
+        };
+        let id = id as u32;
 
         if !(120_000_000..120_300_000).contains(&id) {
             pos = id_start;
@@ -237,7 +245,9 @@ fn parse_id_map(bytes: &[u8]) -> HashMap<u32, String> {
             break;
         }
 
-        let data = read_bytes(bytes, &mut pos);
+        let Some(data) = read_bytes(bytes, &mut pos) else {
+            break;
+        };
         let key = std::str::from_utf8(data).unwrap_or_default();
         if key.contains('!') {
             map.insert(id, key.to_string());
@@ -252,45 +262,45 @@ fn parse_loc_map(bytes: &[u8]) -> HashMap<String, String> {
     let mut pos = 0;
 
     while pos < bytes.len() {
-        let outer_tag = read_varint(bytes, &mut pos);
+        let Some(outer_tag) = read_varint(bytes, &mut pos) else {
+            break;
+        };
         if outer_tag != 0x0a {
-            match outer_tag & 0x07 {
-                0 => {
-                    read_varint(bytes, &mut pos);
-                }
-                2 => {
-                    read_bytes(bytes, &mut pos);
-                }
-                _ => break,
+            if skip_field(bytes, &mut pos, outer_tag).is_none() {
+                break;
             }
             continue;
         }
 
-        let submessage = read_bytes(bytes, &mut pos);
+        let Some(submessage) = read_bytes(bytes, &mut pos) else {
+            break;
+        };
         let mut sub_pos = 0;
         let mut key = None;
         let mut name = None;
 
         while sub_pos < submessage.len() {
-            let inner_tag = read_varint(submessage, &mut sub_pos);
+            let Some(inner_tag) = read_varint(submessage, &mut sub_pos) else {
+                break;
+            };
             match inner_tag {
                 0x0a => {
-                    let data = read_bytes(submessage, &mut sub_pos);
+                    let Some(data) = read_bytes(submessage, &mut sub_pos) else {
+                        break;
+                    };
                     key = Some(std::str::from_utf8(data).unwrap_or_default().to_string());
                 }
                 0x12 => {
-                    let data = read_bytes(submessage, &mut sub_pos);
+                    let Some(data) = read_bytes(submessage, &mut sub_pos) else {
+                        break;
+                    };
                     name = Some(std::str::from_utf8(data).unwrap_or_default().to_string());
                 }
-                _ => match inner_tag & 0x07 {
-                    0 => {
-                        read_varint(submessage, &mut sub_pos);
+                _ => {
+                    if skip_field(submessage, &mut sub_pos, inner_tag).is_none() {
+                        break;
                     }
-                    2 => {
-                        read_bytes(submessage, &mut sub_pos);
-                    }
-                    _ => break,
-                },
+                }
             }
         }
 
@@ -302,9 +312,26 @@ fn parse_loc_map(bytes: &[u8]) -> HashMap<String, String> {
     map
 }
 
-pub fn build_game_data(storefront: &Storefront) -> Result<HashMap<u32, String>, super::AppError> {
+// protobuf wire types
+fn skip_field(data: &[u8], pos: &mut usize, tag: u64) -> Option<()> {
+    match tag & 0x07 {
+        0 => read_varint(data, pos).map(|_| ()),
+        1 => {
+            *pos += 8;
+            Some(())
+        }
+        2 => read_bytes(data, pos).map(|_| ()),
+        5 => {
+            *pos += 4;
+            Some(())
+        }
+        _ => None,
+    }
+}
+
+fn load_item_names(storefront: &Storefront) -> Result<HashMap<u32, String>, super::AppError> {
     let streaming_assets = find_streaming_assets(storefront)
-        .ok_or_else(|| super::AppError::Parse("Could not locate game files".to_string()))?;
+        .ok_or_else(|| super::AppError::NotFound("Could not locate game files".to_string()))?;
 
     let zip_path = streaming_assets
         .join("Localization")
@@ -314,7 +341,7 @@ pub fn build_game_data(storefront: &Storefront) -> Result<HashMap<u32, String>, 
     let mut archive = ZipArchive::new(cursor).map_err(|e| super::AppError::Parse(e.to_string()))?;
 
     let types = ["Companion", "Character", "ActivityItem"];
-    let mut result = HashMap::new();
+    let mut names = HashMap::new();
 
     for &t in &types {
         let item_path = streaming_assets
@@ -325,7 +352,7 @@ pub fn build_game_data(storefront: &Storefront) -> Result<HashMap<u32, String>, 
 
         let entry_name = format!("{}.locbin", t);
         let mut entry = archive.by_name(&entry_name).map_err(|_| {
-            super::AppError::Parse(format!("Could not find {} in LocDB archive", entry_name))
+            super::AppError::NotFound(format!("Could not find {} in LocDB archive", entry_name))
         })?;
         let mut loc_bytes = Vec::new();
         entry
@@ -337,27 +364,34 @@ pub fn build_game_data(storefront: &Storefront) -> Result<HashMap<u32, String>, 
         for (&id, key) in &id_map {
             let lookup_key = format!("{}_DisplayName", key);
             if let Some(display_name) = loc_map.get(&lookup_key) {
-                result.insert(id, display_name.clone());
+                names.insert(id, display_name.clone());
             }
         }
     }
 
-    Ok(result)
+    Ok(names)
 }
 
-static CACHE: Mutex<Option<(Storefront, HashMap<u32, String>)>> = Mutex::new(None);
+static CACHE: Mutex<Option<(Storefront, Arc<HashMap<u32, String>>)>> = Mutex::new(None);
 
-#[tauri::command]
-#[specta::specta]
-pub fn get_game_data(storefront: Storefront) -> Result<HashMap<u32, String>, super::AppError> {
+// cache item names to avoid re-parsing game files
+pub fn cached_item_names(
+    storefront: &Storefront,
+) -> Result<Arc<HashMap<u32, String>>, super::AppError> {
     let mut cache = CACHE.lock().unwrap();
-    if let Some((cached_storefront, cached_data)) = cache.as_ref() {
-        if *cached_storefront == storefront {
-            return Ok(cached_data.clone());
+    if let Some((cached_storefront, names)) = cache.as_ref() {
+        if cached_storefront == storefront {
+            return Ok(names.clone());
         }
     }
 
-    let data = build_game_data(&storefront)?;
-    *cache = Some((storefront, data.clone()));
-    Ok(data)
+    let names = Arc::new(load_item_names(storefront)?);
+    *cache = Some((storefront.clone(), names.clone()));
+    Ok(names)
+}
+
+#[tauri::command]
+#[specta::specta]
+pub fn get_item_names(storefront: Storefront) -> Result<HashMap<u32, String>, super::AppError> {
+    Ok((*cached_item_names(&storefront)?).clone())
 }

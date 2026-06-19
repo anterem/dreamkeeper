@@ -15,11 +15,7 @@
   }
 
   .overline {
-    font-family: var(--font-display);
-    font-size: var(--font-size-sm);
     letter-spacing: 0.4em;
-    color: var(--color-text-muted);
-    text-transform: uppercase;
     margin-bottom: var(--space-2);
   }
 
@@ -28,8 +24,10 @@
   }
 
   .page-header .divider {
+    max-width: calc(100vw - 2 * var(--frame-content-inset));
     margin-top: var(--space-3);
     margin-bottom: 0;
+    margin-inline: auto;
     color: var(--color-primary);
   }
 </style>

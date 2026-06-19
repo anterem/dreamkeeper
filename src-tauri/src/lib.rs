@@ -4,10 +4,13 @@ use std::{
     fs::read,
     io::{Cursor, Read},
     path::{Path, PathBuf},
+    sync::Mutex,
     time::UNIX_EPOCH,
 };
 
+mod critters;
 mod game_data;
+mod today;
 
 const KEY: [u8; 32] =
     hex_literal::hex!("62357168683873614a38556c444a557a545a5864325467366d626f3857386e35");
@@ -18,6 +21,19 @@ pub enum AppError {
     Io(String),
     #[error("Parse error: {0}")]
     Parse(String),
+    #[error("{0}")]
+    NotFound(String),
+    #[error("No save file loaded")]
+    NoSaveLoaded,
+}
+
+pub struct LoadedSave {
+    pub contents: serde_json::Value,
+    pub storefront: game_data::Storefront,
+}
+
+pub struct AppState {
+    pub save: Mutex<Option<LoadedSave>>,
 }
 
 impl From<std::io::Error> for AppError {
@@ -34,10 +50,8 @@ pub struct SaveFile {
     modified_secs: u32,
 }
 
-#[tauri::command]
-#[specta::specta]
-fn decrypt_save_file(path: PathBuf) -> Result<serde_json::Value, AppError> {
-    let ciphertext = read(&path)?;
+fn decrypt_save_file(path: &Path) -> Result<serde_json::Value, AppError> {
+    let ciphertext = read(path)?;
 
     let decryptor = ecb::Decryptor::<aes::Aes256>::new(&KEY.into());
 
@@ -57,6 +71,21 @@ fn decrypt_save_file(path: PathBuf) -> Result<serde_json::Value, AppError> {
         .map_err(|e| AppError::Parse(e.to_string()))?;
 
     serde_json::from_str(&contents).map_err(|e| AppError::Parse(e.to_string()))
+}
+
+#[tauri::command]
+#[specta::specta]
+fn load_save_file(
+    path: PathBuf,
+    storefront: game_data::Storefront,
+    state: tauri::State<AppState>,
+) -> Result<(), AppError> {
+    let contents = decrypt_save_file(&path)?;
+    *state.save.lock().unwrap() = Some(LoadedSave {
+        contents,
+        storefront,
+    });
+    Ok(())
 }
 
 fn get_game_folder() -> PathBuf {
@@ -117,8 +146,10 @@ pub fn run() {
     let specta_builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(tauri_specta::collect_commands![
             get_save_files,
-            decrypt_save_file,
-            game_data::get_game_data,
+            load_save_file,
+            game_data::get_item_names,
+            critters::get_critters,
+            today::get_today
         ]);
 
     #[cfg(debug_assertions)]
@@ -130,6 +161,9 @@ pub fn run() {
         .expect("failed to export ts bindings");
 
     tauri::Builder::default()
+        .manage(AppState {
+            save: Mutex::new(None),
+        })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(specta_builder.invoke_handler())
         .run(tauri::generate_context!())

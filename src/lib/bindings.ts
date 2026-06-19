@@ -5,12 +5,27 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 /** Commands */
 export const commands = {
 	getSaveFiles: () => typedError<SaveFile[], AppError>(__TAURI_INVOKE("get_save_files")),
-	decryptSaveFile: (path: string) => typedError<null, AppError>(__TAURI_INVOKE("decrypt_save_file", { path })),
-	getGameData: (storefront: Storefront) => typedError<{ [key in number]: string }, AppError>(__TAURI_INVOKE("get_game_data", { storefront })),
+	loadSaveFile: (path: string, storefront: Storefront) => typedError<null, AppError>(__TAURI_INVOKE("load_save_file", { path, storefront })),
+	getItemNames: (storefront: Storefront) => typedError<{ [key in number]: string }, AppError>(__TAURI_INVOKE("get_item_names", { storefront })),
+	getCritters: (nowUtcSecs: number) => typedError<Critter[], AppError>(__TAURI_INVOKE("get_critters", { nowUtcSecs })),
+	getToday: (nowUtcSecs: number) => typedError<Today, AppError>(__TAURI_INVOKE("get_today", { nowUtcSecs })),
 };
 
 /* Types */
-export type AppError = ({ Io: string }) & { Parse?: never } | ({ Parse: string }) & { Io?: never };
+export type AppError = ({ Io: string }) & { NotFound?: never; Parse?: never } | ({ Parse: string }) & { Io?: never; NotFound?: never } | ({ NotFound: string }) & { Io?: never; Parse?: never } | "NoSaveLoaded";
+
+export type Critter = {
+	itemId: number,
+	name: string,
+	species: string,
+	speciesRank: number,
+	note: string | null,
+	schedule: Schedule[][],
+	availableNow: boolean,
+	tamed: boolean,
+	fedToday: boolean,
+	needsFeeding: boolean,
+};
 
 export type SaveFile = {
 	path: string,
@@ -18,7 +33,18 @@ export type SaveFile = {
 	lastModified: number,
 };
 
+export type Schedule = {
+	start: number,
+	end: number,
+};
+
+export type Section<T> = { status: "ok"; data: T } | { status: "error"; error: string };
+
 export type Storefront = "steam" | "epic" | "microsoft";
+
+export type Today = {
+	critters: Section<Critter[]>,
+};
 
 /* Tauri Specta runtime */
 async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; data: T } | { status: "error"; error: E }> {
@@ -29,3 +55,4 @@ async function typedError<T, E>(result: Promise<T>): Promise<{ status: "ok"; dat
         return { status: "error", error: e as any };
     }
 }
+

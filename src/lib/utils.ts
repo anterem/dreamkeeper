@@ -1,3 +1,41 @@
+import type { Schedule } from './bindings';
+
+function to12HourTime(h: number): { hour: number; meridiem: 'AM' | 'PM' } {
+  return {
+    hour: h % 12 === 0 ? 12 : h % 12,
+    meridiem: h % 24 < 12 ? 'AM' : 'PM'
+  };
+}
+
+function formatHourRange({ start, end }: Schedule): string {
+  const s = to12HourTime(start);
+  const e = to12HourTime(end);
+  return (
+    `${s.hour}` + (s.meridiem === e.meridiem ? '' : ` ${s.meridiem}`) + ` – ${e.hour} ${e.meridiem}`
+  );
+}
+
+export function formatSchedule(daySchedule: Schedule[]): string {
+  if (daySchedule.length === 0) return '—';
+  if (daySchedule.length === 1) {
+    const { start, end } = daySchedule[0];
+    if (start === 0 && end === 24) return 'All day';
+    if (start === 0 && end === 12) return 'Morning';
+    if (start === 12 && end === 24) return 'Afternoon';
+  }
+  return daySchedule.map(formatHourRange).join(', ');
+}
+
+export const WEEKDAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+];
+
 const rtf = new Intl.RelativeTimeFormat(
   typeof navigator !== 'undefined' ? navigator.language : 'en',
   { numeric: 'auto' }

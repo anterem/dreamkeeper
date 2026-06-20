@@ -26,6 +26,11 @@ export function formatSchedule(daySchedule: Schedule[]): string {
   return daySchedule.map(formatHourRange).join(', ');
 }
 
+export function formatFriendship(level: number, xp: number): string {
+  if (level >= 10) return 'Lv 10';
+  return `Lv ${level} · ${xp.toLocaleString()} XP`;
+}
+
 export const WEEKDAY_NAMES = [
   'Sunday',
   'Monday',

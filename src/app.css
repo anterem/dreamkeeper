@@ -361,6 +361,21 @@ hr {
   padding-bottom: var(--space-5);
 }
 
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.filters-label {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  font-style: italic;
+}
+
 .strong {
   color: var(--color-text-strong);
 }

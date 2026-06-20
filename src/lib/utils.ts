@@ -12,6 +12,8 @@ export function roleLabel(role: Role | null): string {
   return role ? ROLE_LABELS[role] : '';
 }
 
+export const ROLES: Role[] = ['gardening', 'fishing', 'mining', 'foraging', 'digging'];
+
 function to12HourTime(h: number): { hour: number; meridiem: 'AM' | 'PM' } {
   return {
     hour: h % 12 === 0 ? 12 : h % 12,

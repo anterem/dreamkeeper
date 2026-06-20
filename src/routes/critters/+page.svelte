@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { commands, type Critter } from '$lib/bindings';
   import { WEEKDAY_NAMES, formatSchedule } from '$lib/utils';
+  import FilterToggle from '$lib/components/FilterToggle.svelte';
 
   let critters = $state<Critter[]>([]);
   let error = $state('');
@@ -13,9 +14,19 @@
   let isToday = $derived(selectedDay === todayIndex);
   let prevDayName = $derived(WEEKDAY_NAMES[(selectedDay + 6) % 7]);
   let nextDayName = $derived(WEEKDAY_NAMES[(selectedDay + 1) % 7]);
-  let dayCritters = $derived.by(() =>
-    critters.filter((c) => c.schedule[selectedDay].length > 0).toSorted(compareOnDay(selectedDay))
-  );
+
+  let onlyAvailable = $state(false);
+  let onlyToFeed = $state(false);
+  let onlyUntamed = $state(false);
+
+  let dayCritters = $derived.by(() => {
+    let list = critters.filter((c) => c.schedule[selectedDay].length > 0);
+    if (isToday && onlyAvailable) list = list.filter((c) => c.availableNow);
+    if (isToday && onlyToFeed) list = list.filter((c) => c.needsFeeding);
+    if (onlyUntamed) list = list.filter((c) => !c.tamed);
+    return list.toSorted(compareOnDay(selectedDay));
+  });
+  let anyFilterActive = $derived(onlyUntamed || (isToday && (onlyAvailable || onlyToFeed)));
 
   function prevDay() {
     selectedDay = (selectedDay + 6) % 7;
@@ -78,16 +89,36 @@
       >
     </nav>
 
-    <p class="legend">
+    <div class="filters">
+      <span class="filters-label">filter by:</span>
       {#if isToday}
-        <span class="now">●</span> available now
-        <span>✓</span> fed today
+        <FilterToggle
+          glyph="●"
+          tone="primary"
+          label="available now"
+          active={onlyAvailable}
+          onclick={() => (onlyAvailable = !onlyAvailable)}
+        />
+        <FilterToggle
+          glyph="✓"
+          label="to feed"
+          active={onlyToFeed}
+          onclick={() => (onlyToFeed = !onlyToFeed)}
+        />
       {/if}
-      <span class="tamed">♥</span> tamed
-    </p>
+      <FilterToggle
+        glyph="♥"
+        tone="accent"
+        label="untamed"
+        active={onlyUntamed}
+        onclick={() => (onlyUntamed = !onlyUntamed)}
+      />
+    </div>
 
     {#if dayCritters.length === 0}
-      <p class="status"><em>No creatures stir this day.</em></p>
+      <p class="status">
+        <em>{anyFilterActive ? 'None match.' : 'No creatures stir this day.'}</em>
+      </p>
     {:else}
       <ol class="ledger">
         {#each dayCritters as critter (critter.itemId)}
@@ -185,22 +216,6 @@
   }
   .today-link:hover {
     color: var(--color-primary-hover);
-  }
-
-  .legend {
-    display: flex;
-    justify-content: center;
-    gap: var(--space-2);
-    align-items: baseline;
-    font-size: var(--font-size-sm);
-    color: var(--color-text-muted);
-    margin-bottom: var(--space-5);
-  }
-  .legend .now {
-    color: var(--color-primary);
-  }
-  .legend .tamed {
-    color: var(--color-accent);
   }
 
   .ledger {

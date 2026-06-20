@@ -8,11 +8,14 @@ export const commands = {
 	loadSaveFile: (path: string, storefront: Storefront) => typedError<null, AppError>(__TAURI_INVOKE("load_save_file", { path, storefront })),
 	getDisplayNames: (storefront: Storefront) => typedError<{ [key in number]: string }, AppError>(__TAURI_INVOKE("get_display_names", { storefront })),
 	getCritters: (nowUtcSecs: number) => typedError<Critter[], AppError>(__TAURI_INVOKE("get_critters", { nowUtcSecs })),
+	getVillagers: (nowUtcSecs: number) => typedError<Villager[], AppError>(__TAURI_INVOKE("get_villagers", { nowUtcSecs })),
 	getToday: (nowUtcSecs: number) => typedError<Today, AppError>(__TAURI_INVOKE("get_today", { nowUtcSecs })),
 };
 
 /* Types */
 export type AppError = ({ Io: string }) & { NotFound?: never; Parse?: never } | ({ Parse: string }) & { Io?: never; NotFound?: never } | ({ NotFound: string }) & { Io?: never; Parse?: never } | "NoSaveLoaded";
+
+export type CollectionStatus = "inVillage" | "inRealm" | "locked";
 
 export type Critter = {
 	itemId: number,
@@ -26,6 +29,15 @@ export type Critter = {
 	fedToday: boolean,
 	needsFeeding: boolean,
 };
+
+export type PreferredGift = {
+	itemId: number,
+	name: string,
+	discovered: boolean,
+	giftedToday: boolean,
+};
+
+export type Role = "gardening" | "fishing" | "mining" | "foraging" | "digging";
 
 export type SaveFile = {
 	path: string,
@@ -44,6 +56,18 @@ export type Storefront = "steam" | "epic" | "microsoft";
 
 export type Today = {
 	critters: Section<Critter[]>,
+};
+
+export type Villager = {
+	id: number,
+	name: string,
+	status: CollectionStatus,
+	role: Role | null,
+	friendshipLevel: number,
+	friendshipXp: number,
+	isMaxed: boolean,
+	gifts: PreferredGift[],
+	giftableToday: boolean,
 };
 
 /* Tauri Specta runtime */

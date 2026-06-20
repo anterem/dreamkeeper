@@ -11,6 +11,7 @@ use std::{
 mod critters;
 mod game_data;
 mod today;
+mod villagers;
 
 const KEY: [u8; 32] =
     hex_literal::hex!("62357168683873614a38556c444a557a545a5864325467366d626f3857386e35");
@@ -149,6 +150,7 @@ pub fn run() {
             load_save_file,
             game_data::get_display_names,
             critters::get_critters,
+            villagers::get_villagers,
             today::get_today
         ]);
 

@@ -53,7 +53,7 @@
           {#each toFeed as critter}
             <li class="entry">
               <span class="strong">{critter.name}</span>
-              <span class="muted time">{formatSchedule(critter.schedule[weekday])}</span>
+              <span class="time">{formatSchedule(critter.schedule[weekday])}</span>
             </li>
           {/each}
         </ul>
@@ -77,17 +77,18 @@
             <li class="card">
               <div class="heading">
                 <span class="strong">{villager.name}</span>
-                <span class="meta muted"
+                <span class="meta"
                   >Lv {villager.friendshipLevel}{#if villager.role}{' '}{roleLabel(
                       villager.role
                     )}{/if}</span
                 >
               </div>
-              <ul class="gifts">
-                {#each villager.gifts.filter((g) => !g.giftedToday) as gift}
-                  <li>{gift.name}</li>
-                {/each}
-              </ul>
+              <p class="gifts">
+                {villager.gifts
+                  .filter((g) => !g.giftedToday)
+                  .map((g) => g.name)
+                  .join(' · ')}
+              </p>
             </li>
           {/each}
         </ul>
@@ -119,7 +120,7 @@
   }
 
   .columns > li {
-    padding: var(--space-1) 0;
+    padding: var(--space-2) 0;
     break-inside: avoid;
     font-size: var(--font-size-sm);
   }
@@ -131,9 +132,16 @@
     gap: var(--space-3);
   }
 
+  .entry .strong,
+  .heading .strong {
+    font-size: var(--font-size-md);
+    line-height: 1.2;
+  }
+
   .time {
     flex: none;
     white-space: nowrap;
+    color: var(--color-text-subtle);
   }
 
   .card {
@@ -151,15 +159,10 @@
   .meta {
     flex: none;
     white-space: nowrap;
+    color: var(--color-text-subtle);
   }
 
   .gifts {
-    padding-left: var(--space-4);
-    list-style: disc;
-  }
-
-  .gifts li::marker {
-    content: '–\00a0\00a0';
-    color: var(--color-text-muted);
+    color: var(--color-text-subtle);
   }
 </style>

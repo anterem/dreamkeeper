@@ -37,15 +37,15 @@
           <div class="entry">
             <span class="strong">{villager.name}</span>
             {#if inVillage}
-              <span class="muted level">Lv {villager.friendshipLevel}</span>
+              <span class="level">Lv {villager.friendshipLevel}</span>
             {/if}
             <span class="leader" aria-hidden="true"></span>
             {#if inVillage}
               {#if villager.role}
-                <span class="muted role">{roleLabel(villager.role)}</span>
+                <span class="role">{roleLabel(villager.role)}</span>
               {/if}
             {:else}
-              <span class="muted status-label">Locked</span>
+              <span class="status-label">Locked</span>
             {/if}
           </div>
           {#if villager.gifts.length > 0}
@@ -100,23 +100,25 @@
   .status-label {
     flex: none;
     font-size: var(--font-size-sm);
+    color: var(--color-text-subtle);
   }
 
   .role {
     flex: none;
     font-size: var(--font-size-sm);
+    color: var(--color-text-subtle);
   }
 
   .gifts {
     margin: 0;
     padding-left: var(--space-5);
     list-style: disc;
-    color: var(--color-text-muted);
+    color: var(--color-text-subtle);
   }
 
   .gifts li::marker {
     content: '–\00a0\00a0';
-    color: var(--color-text-muted);
+    color: var(--color-text-subtle);
   }
 
   .gifts li.given::marker {

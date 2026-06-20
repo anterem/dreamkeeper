@@ -29,6 +29,7 @@
 
   h2 {
     margin-bottom: var(--space-4);
+    font-size: var(--font-size-md);
   }
 
   a {

@@ -106,7 +106,7 @@
             </span>
             {#if critter.tamed}<span class="badge" title="tamed">♥</span>{/if}
             <span class="leader" aria-hidden="true"></span>
-            <span class="muted time">{formatSchedule(critter.schedule[selectedDay])}</span>
+            <span class="time">{formatSchedule(critter.schedule[selectedDay])}</span>
           </li>
         {/each}
       </ol>
@@ -247,6 +247,7 @@
   .time {
     flex: none;
     font-size: var(--font-size-sm);
+    color: var(--color-text-subtle);
   }
 
   .badge {

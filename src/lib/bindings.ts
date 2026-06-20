@@ -56,6 +56,7 @@ export type Storefront = "steam" | "epic" | "microsoft";
 
 export type Today = {
 	critters: Section<Critter[]>,
+	villagers: Section<Villager[]>,
 };
 
 export type Villager = {

@@ -12,6 +12,14 @@
   let critters = $derived(today?.critters.status === 'ok' ? today.critters.data : null);
   let toFeed = $derived(critters ? critters.filter((c) => c.needsFeeding) : []);
 
+  let villagers = $derived(today?.villagers.status === 'ok' ? today.villagers.data : null);
+  // act on now: in your valley, friendship not maxed, and still giftable today
+  let toGift = $derived(
+    villagers
+      ? villagers.filter((v) => v.status === 'inVillage' && !v.isMaxed && v.giftableToday)
+      : []
+  );
+
   onMount(async () => {
     const now = Math.floor(Date.now() / 1000);
     const result = await commands.getToday(now);
@@ -46,6 +54,26 @@
               <span class="strong">{critter.name}</span>
               <span class="muted time">{formatSchedule(critter.schedule[weekday])}</span>
             </li>
+          {/each}
+        </ul>
+      {/if}
+    </Section>
+
+    <Section
+      title="Villagers"
+      href="/villagers"
+      summary={toGift.length > 0 ? `${toGift.length} to gift` : undefined}
+    >
+      {#if today.villagers.status === 'error'}
+        <p class="muted">
+          Couldn't read villagers: <span class="error">{today.villagers.error}</span>
+        </p>
+      {:else if toGift.length === 0}
+        <p class="muted"><em>All gifted for today.</em></p>
+      {:else}
+        <ul class="columns">
+          {#each toGift as villager}
+            <li><span class="strong">{villager.name}</span></li>
           {/each}
         </ul>
       {/if}

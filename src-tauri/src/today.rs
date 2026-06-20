@@ -1,4 +1,5 @@
 use super::critters::{self, Critter};
+use super::villagers::{self, Villager};
 
 #[derive(serde::Serialize, specta::Type)]
 #[serde(tag = "status", rename_all = "camelCase")]
@@ -22,6 +23,7 @@ impl<T> From<Result<T, super::AppError>> for Section<T> {
 #[serde(rename_all = "camelCase")]
 pub struct Today {
     critters: Section<Vec<Critter>>,
+    villagers: Section<Vec<Villager>>,
 }
 
 #[tauri::command]
@@ -35,5 +37,6 @@ pub fn get_today(
 
     Ok(Today {
         critters: critters::collect(loaded, now_utc_secs).into(),
+        villagers: villagers::collect(loaded, now_utc_secs).into(),
     })
 }

@@ -6,7 +6,7 @@ import { invoke as __TAURI_INVOKE } from "@tauri-apps/api/core";
 export const commands = {
 	getSaveFiles: () => typedError<SaveFile[], AppError>(__TAURI_INVOKE("get_save_files")),
 	loadSaveFile: (path: string, storefront: Storefront) => typedError<null, AppError>(__TAURI_INVOKE("load_save_file", { path, storefront })),
-	getItemNames: (storefront: Storefront) => typedError<{ [key in number]: string }, AppError>(__TAURI_INVOKE("get_item_names", { storefront })),
+	getDisplayNames: (storefront: Storefront) => typedError<{ [key in number]: string }, AppError>(__TAURI_INVOKE("get_display_names", { storefront })),
 	getCritters: (nowUtcSecs: number) => typedError<Critter[], AppError>(__TAURI_INVOKE("get_critters", { nowUtcSecs })),
 	getToday: (nowUtcSecs: number) => typedError<Today, AppError>(__TAURI_INVOKE("get_today", { nowUtcSecs })),
 };

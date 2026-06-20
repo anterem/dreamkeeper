@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs::read,
     io::{Cursor, Read},
+    ops::Range,
     path::PathBuf,
     sync::{Arc, Mutex},
 };
@@ -210,8 +211,13 @@ fn find_streaming_assets(storefront: &Storefront) -> Option<PathBuf> {
     }
 }
 
-fn parse_id_map(bytes: &[u8]) -> HashMap<u32, String> {
-    let mut map = HashMap::new();
+// protobuf records with unknown wrapper - have to scan for id and key instead of parsing
+fn resolve_display_names(
+    bytes: &[u8],
+    id_range: Range<u32>,
+    loc_map: &HashMap<String, String>,
+) -> HashMap<u32, String> {
+    let mut names = HashMap::new();
     let mut pos = 0;
 
     while pos < bytes.len() {
@@ -220,41 +226,28 @@ fn parse_id_map(bytes: &[u8]) -> HashMap<u32, String> {
             continue;
         }
         let id_start = pos + 1;
-        if id_start >= bytes.len() {
-            break;
+
+        // use scratch cursor to check for false positives
+        let mut scan = id_start;
+        if let Some(id) = read_varint(bytes, &mut scan) {
+            if id_range.contains(&(id as u32)) && bytes.get(scan) == Some(&0x12) {
+                scan += 1;
+                if let Some(data) = read_bytes(bytes, &mut scan) {
+                    if let Ok(key) = std::str::from_utf8(data) {
+                        if let Some(name) = loc_map.get(&format!("{key}_DisplayName")) {
+                            names.insert(id as u32, name.clone());
+                            pos = scan;
+                            continue;
+                        }
+                    }
+                }
+            }
         }
 
         pos = id_start;
-        let Some(id) = read_varint(bytes, &mut pos) else {
-            break;
-        };
-        let id = id as u32;
-
-        if !(120_000_000..120_300_000).contains(&id) {
-            pos = id_start;
-            continue;
-        }
-
-        if pos >= bytes.len() || bytes[pos] != 0x12 {
-            pos = id_start;
-            continue;
-        }
-
-        pos += 1;
-        if pos >= bytes.len() {
-            break;
-        }
-
-        let Some(data) = read_bytes(bytes, &mut pos) else {
-            break;
-        };
-        let key = std::str::from_utf8(data).unwrap_or_default();
-        if key.contains('!') {
-            map.insert(id, key.to_string());
-        }
     }
 
-    map
+    names
 }
 
 fn parse_loc_map(bytes: &[u8]) -> HashMap<String, String> {
@@ -340,15 +333,19 @@ fn load_item_names(storefront: &Storefront) -> Result<HashMap<u32, String>, supe
     let cursor = Cursor::new(zip_bytes);
     let mut archive = ZipArchive::new(cursor).map_err(|e| super::AppError::Parse(e.to_string()))?;
 
-    let types = ["Companion", "Character", "ActivityItem"];
+    // disjoint id ranges, so merging every type into one map is collision-free
+    let types = [
+        ("Companion", 120_000_000..120_300_000),
+        ("Character", 10_000_000..10_100_000),
+        ("ActivityItem", 30_000_000..32_000_000),
+    ];
     let mut names = HashMap::new();
 
-    for &t in &types {
+    for (t, id_range) in types {
         let item_path = streaming_assets
             .join("itemlist")
             .join(format!("{}.json", t));
         let item_bytes = read(&item_path)?;
-        let id_map = parse_id_map(&item_bytes);
 
         let entry_name = format!("{}.locbin", t);
         let mut entry = archive.by_name(&entry_name).map_err(|_| {
@@ -358,15 +355,9 @@ fn load_item_names(storefront: &Storefront) -> Result<HashMap<u32, String>, supe
         entry
             .read_to_end(&mut loc_bytes)
             .map_err(|e| super::AppError::Parse(e.to_string()))?;
-
         let loc_map = parse_loc_map(&loc_bytes);
 
-        for (&id, key) in &id_map {
-            let lookup_key = format!("{}_DisplayName", key);
-            if let Some(display_name) = loc_map.get(&lookup_key) {
-                names.insert(id, display_name.clone());
-            }
-        }
+        names.extend(resolve_display_names(&item_bytes, id_range, &loc_map));
     }
 
     Ok(names)
@@ -390,8 +381,10 @@ pub fn cached_item_names(
     Ok(names)
 }
 
+// display names for game ids: companions, characters, and items alike
 #[tauri::command]
 #[specta::specta]
-pub fn get_item_names(storefront: Storefront) -> Result<HashMap<u32, String>, super::AppError> {
+pub fn get_display_names(storefront: Storefront) -> Result<HashMap<u32, String>, super::AppError> {
     Ok((*cached_item_names(&storefront)?).clone())
 }
+

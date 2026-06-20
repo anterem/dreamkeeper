@@ -147,7 +147,7 @@ pub fn run() {
         tauri_specta::Builder::<tauri::Wry>::new().commands(tauri_specta::collect_commands![
             get_save_files,
             load_save_file,
-            game_data::get_item_names,
+            game_data::get_display_names,
             critters::get_critters,
             today::get_today
         ]);

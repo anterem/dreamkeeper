@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { commands, type Critter } from '$lib/bindings';
   import { WEEKDAY_NAMES, formatSchedule } from '$lib/utils';
+  import { PersistedState } from '$lib/persisted.svelte';
   import FilterToggle from '$lib/components/FilterToggle.svelte';
 
   let critters = $state<Critter[]>([]);
@@ -15,18 +16,20 @@
   let prevDayName = $derived(WEEKDAY_NAMES[(selectedDay + 6) % 7]);
   let nextDayName = $derived(WEEKDAY_NAMES[(selectedDay + 1) % 7]);
 
-  let onlyAvailable = $state(false);
-  let onlyToFeed = $state(false);
-  let onlyUntamed = $state(false);
+  const onlyAvailable = new PersistedState('critters.availableNow', false);
+  const onlyToFeed = new PersistedState('critters.toFeed', false);
+  const onlyUntamed = new PersistedState('critters.untamed', false);
 
   let dayCritters = $derived.by(() => {
     let list = critters.filter((c) => c.schedule[selectedDay].length > 0);
-    if (isToday && onlyAvailable) list = list.filter((c) => c.availableNow);
-    if (isToday && onlyToFeed) list = list.filter((c) => c.needsFeeding);
-    if (onlyUntamed) list = list.filter((c) => !c.tamed);
+    if (isToday && onlyAvailable.current) list = list.filter((c) => c.availableNow);
+    if (isToday && onlyToFeed.current) list = list.filter((c) => c.needsFeeding);
+    if (onlyUntamed.current) list = list.filter((c) => !c.tamed);
     return list.toSorted(compareOnDay(selectedDay));
   });
-  let anyFilterActive = $derived(onlyUntamed || (isToday && (onlyAvailable || onlyToFeed)));
+  let anyFilterActive = $derived(
+    onlyUntamed.current || (isToday && (onlyAvailable.current || onlyToFeed.current))
+  );
 
   function prevDay() {
     selectedDay = (selectedDay + 6) % 7;
@@ -96,22 +99,22 @@
           glyph="●"
           tone="primary"
           label="available now"
-          active={onlyAvailable}
-          onclick={() => (onlyAvailable = !onlyAvailable)}
+          active={onlyAvailable.current}
+          onclick={() => (onlyAvailable.current = !onlyAvailable.current)}
         />
         <FilterToggle
           glyph="✓"
           label="to feed"
-          active={onlyToFeed}
-          onclick={() => (onlyToFeed = !onlyToFeed)}
+          active={onlyToFeed.current}
+          onclick={() => (onlyToFeed.current = !onlyToFeed.current)}
         />
       {/if}
       <FilterToggle
         glyph="♥"
         tone="accent"
         label="untamed"
-        active={onlyUntamed}
-        onclick={() => (onlyUntamed = !onlyUntamed)}
+        active={onlyUntamed.current}
+        onclick={() => (onlyUntamed.current = !onlyUntamed.current)}
       />
     </div>
 

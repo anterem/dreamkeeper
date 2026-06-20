@@ -2,32 +2,34 @@
   import { onMount } from 'svelte';
   import { commands, type Role, type Villager } from '$lib/bindings';
   import { ROLES, roleLabel } from '$lib/utils';
+  import { PersistedState } from '$lib/persisted.svelte';
   import FilterToggle from '$lib/components/FilterToggle.svelte';
 
   let villagers = $state<Villager[]>([]);
   let error = $state('');
   let loading = $state(true);
 
-  let onlyUnlocked = $state(true);
-  let onlyFriendshipNeeded = $state(false);
-  let onlyGiftable = $state(false);
-  let selectedRoles = $state<Role[]>([]);
+  const onlyUnlocked = new PersistedState('villagers.unlocked', true);
+  const onlyFriendshipNeeded = new PersistedState('villagers.toLevel', false);
+  const onlyGiftable = new PersistedState('villagers.toGift', false);
+  const selectedRoles = new PersistedState<Role[]>('villagers.roles', []);
 
   let shownVillagers = $derived.by(() => {
     let list = villagers;
-    if (onlyUnlocked) list = list.filter((v) => v.status === 'inVillage');
-    if (onlyFriendshipNeeded) list = list.filter((v) => v.status === 'inVillage' && !v.isMaxed);
-    if (onlyGiftable)
+    if (onlyUnlocked.current) list = list.filter((v) => v.status === 'inVillage');
+    if (onlyFriendshipNeeded.current)
+      list = list.filter((v) => v.status === 'inVillage' && !v.isMaxed);
+    if (onlyGiftable.current)
       list = list.filter((v) => v.status === 'inVillage' && v.giftableToday && v.gifts.length > 0);
-    if (selectedRoles.length > 0)
-      list = list.filter((v) => v.role !== null && selectedRoles.includes(v.role));
+    if (selectedRoles.current.length > 0)
+      list = list.filter((v) => v.role !== null && selectedRoles.current.includes(v.role));
     return list;
   });
 
   function toggleRole(role: Role) {
-    selectedRoles = selectedRoles.includes(role)
-      ? selectedRoles.filter((r) => r !== role)
-      : [...selectedRoles, role];
+    selectedRoles.current = selectedRoles.current.includes(role)
+      ? selectedRoles.current.filter((r) => r !== role)
+      : [...selectedRoles.current, role];
   }
 
   onMount(async () => {
@@ -57,23 +59,23 @@
       <span class="filters-label">filter by:</span>
       <FilterToggle
         label="unlocked"
-        active={onlyUnlocked}
-        onclick={() => (onlyUnlocked = !onlyUnlocked)}
+        active={onlyUnlocked.current}
+        onclick={() => (onlyUnlocked.current = !onlyUnlocked.current)}
       />
       <FilterToggle
         label="to level"
-        active={onlyFriendshipNeeded}
-        onclick={() => (onlyFriendshipNeeded = !onlyFriendshipNeeded)}
+        active={onlyFriendshipNeeded.current}
+        onclick={() => (onlyFriendshipNeeded.current = !onlyFriendshipNeeded.current)}
       />
       <FilterToggle
         label="to gift"
-        active={onlyGiftable}
-        onclick={() => (onlyGiftable = !onlyGiftable)}
+        active={onlyGiftable.current}
+        onclick={() => (onlyGiftable.current = !onlyGiftable.current)}
       />
       {#each ROLES as role}
         <FilterToggle
           label={role}
-          active={selectedRoles.includes(role)}
+          active={selectedRoles.current.includes(role)}
           onclick={() => toggleRole(role)}
         />
       {/each}

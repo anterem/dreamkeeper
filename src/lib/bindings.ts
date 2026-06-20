@@ -30,9 +30,12 @@ export type Critter = {
 	needsFeeding: boolean,
 };
 
+export type GiftCategory = "produce" | "meal" | "flower" | "fish" | "animalProduct" | "gem" | "material" | "other";
+
 export type PreferredGift = {
 	itemId: number,
 	name: string,
+	category: GiftCategory,
 	discovered: boolean,
 	giftedToday: boolean,
 };

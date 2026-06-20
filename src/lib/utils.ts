@@ -1,4 +1,16 @@
-import type { Schedule } from './bindings';
+import type { Role, Schedule } from './bindings';
+
+const ROLE_LABELS: Record<Role, string> = {
+  gardening: 'Gardening',
+  fishing: 'Fishing',
+  mining: 'Mining',
+  foraging: 'Foraging',
+  digging: 'Digging'
+};
+
+export function roleLabel(role: Role | null): string {
+  return role ? ROLE_LABELS[role] : '';
+}
 
 function to12HourTime(h: number): { hour: number; meridiem: 'AM' | 'PM' } {
   return {

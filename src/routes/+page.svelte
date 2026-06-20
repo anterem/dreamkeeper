@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { commands, type Today } from '$lib/bindings';
-  import { formatSchedule } from '$lib/utils';
+  import { formatSchedule, roleLabel } from '$lib/utils';
   import Section from '$lib/components/Section.svelte';
 
   let today = $state<Today | null>(null);
@@ -13,10 +13,11 @@
   let toFeed = $derived(critters ? critters.filter((c) => c.needsFeeding) : []);
 
   let villagers = $derived(today?.villagers.status === 'ok' ? today.villagers.data : null);
-  // act on now: in your valley, friendship not maxed, and still giftable today
   let toGift = $derived(
     villagers
-      ? villagers.filter((v) => v.status === 'inVillage' && !v.isMaxed && v.giftableToday)
+      ? villagers.filter(
+          (v) => v.status === 'inVillage' && !v.isMaxed && v.gifts.some((g) => !g.giftedToday)
+        )
       : []
   );
 
@@ -50,7 +51,7 @@
       {:else}
         <ul class="columns">
           {#each toFeed as critter}
-            <li>
+            <li class="entry">
               <span class="strong">{critter.name}</span>
               <span class="muted time">{formatSchedule(critter.schedule[weekday])}</span>
             </li>
@@ -62,7 +63,7 @@
     <Section
       title="Villagers"
       href="/villagers"
-      summary={toGift.length > 0 ? `${toGift.length} to gift` : undefined}
+      summary={toGift.length > 0 ? `${toGift.length} to befriend` : undefined}
     >
       {#if today.villagers.status === 'error'}
         <p class="muted">
@@ -73,7 +74,21 @@
       {:else}
         <ul class="columns">
           {#each toGift as villager}
-            <li><span class="strong">{villager.name}</span></li>
+            <li class="card">
+              <div class="heading">
+                <span class="strong">{villager.name}</span>
+                <span class="meta muted"
+                  >Lv {villager.friendshipLevel}{#if villager.role}{' '}{roleLabel(
+                      villager.role
+                    )}{/if}</span
+                >
+              </div>
+              <ul class="gifts">
+                {#each villager.gifts.filter((g) => !g.giftedToday) as gift}
+                  <li>{gift.name}</li>
+                {/each}
+              </ul>
+            </li>
           {/each}
         </ul>
       {/if}
@@ -104,16 +119,47 @@
   }
 
   .columns > li {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: var(--space-3);
     padding: var(--space-1) 0;
     break-inside: avoid;
     font-size: var(--font-size-sm);
   }
 
+  .entry {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
   .time {
+    flex: none;
     white-space: nowrap;
+  }
+
+  .card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+
+  .meta {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .gifts {
+    padding-left: var(--space-4);
+    list-style: disc;
+  }
+
+  .gifts li::marker {
+    content: '–\00a0\00a0';
+    color: var(--color-text-muted);
   }
 </style>

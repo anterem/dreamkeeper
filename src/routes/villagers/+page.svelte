@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { commands, type Villager } from '$lib/bindings';
-  import { formatFriendship } from '$lib/utils';
+  import { roleLabel } from '$lib/utils';
 
   let villagers = $state<Villager[]>([]);
   let error = $state('');
@@ -33,17 +33,29 @@
     <ol class="ledger">
       {#each villagers as villager (villager.id)}
         {@const inVillage = villager.status === 'inVillage'}
-        <li class="entry" class:faded={!inVillage}>
-          <span class="strong">{villager.name}</span>
-          <span class="leader" aria-hidden="true"></span>
-          {#if inVillage}
-            <span class="muted friendship">
-              {formatFriendship(villager.friendshipLevel, villager.friendshipXp)}
-            </span>
-          {:else}
-            <span class="muted status-label">
-              {villager.status === 'inRealm' ? 'In realm' : 'Locked'}
-            </span>
+        <li class="card" class:faded={!inVillage}>
+          <div class="entry">
+            <span class="strong">{villager.name}</span>
+            {#if inVillage}
+              <span class="muted level">Lv {villager.friendshipLevel}</span>
+            {/if}
+            <span class="leader" aria-hidden="true"></span>
+            {#if inVillage}
+              {#if villager.role}
+                <span class="muted role">{roleLabel(villager.role)}</span>
+              {/if}
+            {:else}
+              <span class="muted status-label">Locked</span>
+            {/if}
+          </div>
+          {#if villager.gifts.length > 0}
+            <ul class="gifts">
+              {#each villager.gifts as gift}
+                <li class:given={gift.giftedToday} title={gift.giftedToday ? 'gifted today' : undefined}>
+                  {gift.name}
+                </li>
+              {/each}
+            </ul>
           {/if}
         </li>
       {/each}
@@ -64,15 +76,18 @@
     flex-direction: column;
   }
 
+  .card {
+    padding: var(--space-2) 0;
+  }
+
+  .card.faded {
+    opacity: 0.5;
+  }
+
   .entry {
     display: flex;
     align-items: baseline;
     gap: var(--space-2);
-    padding: 0.1rem 0;
-  }
-
-  .entry.faded {
-    opacity: 0.5;
   }
 
   .leader {
@@ -81,9 +96,31 @@
     border-bottom: 1px dotted var(--color-rule);
   }
 
-  .friendship,
+  .level,
   .status-label {
     flex: none;
     font-size: var(--font-size-sm);
+  }
+
+  .role {
+    flex: none;
+    font-size: var(--font-size-sm);
+  }
+
+  .gifts {
+    margin: 0;
+    padding-left: var(--space-5);
+    list-style: disc;
+    color: var(--color-text-muted);
+  }
+
+  .gifts li::marker {
+    content: '–\00a0\00a0';
+    color: var(--color-text-muted);
+  }
+
+  .gifts li.given::marker {
+    content: '✓ ';
+    color: var(--color-accent);
   }
 </style>

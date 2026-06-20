@@ -112,9 +112,37 @@ pub enum CollectionStatus {
 
 #[derive(serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
+pub enum GiftCategory {
+    Produce,
+    Meal,
+    Flower,
+    Fish,
+    AnimalProduct,
+    Gem,
+    Material,
+    Other,
+}
+
+// gift category is encoded in the item id band
+fn gift_category(item_id: u32) -> GiftCategory {
+    match item_id / 100_000 {
+        302 => GiftCategory::Produce,
+        303 => GiftCategory::Meal,
+        308 => GiftCategory::Flower,
+        310 => GiftCategory::Fish,
+        311 => GiftCategory::AnimalProduct,
+        316 => GiftCategory::Gem,
+        317 => GiftCategory::Material,
+        _ => GiftCategory::Other,
+    }
+}
+
+#[derive(serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
 pub struct PreferredGift {
     pub item_id: u32,
     pub name: String,
+    pub category: GiftCategory,
     pub discovered: bool,
     pub gifted_today: bool,
 }
@@ -224,6 +252,7 @@ pub(crate) fn collect(loaded: &LoadedSave, now_utc_secs: i64) -> Result<Vec<Vill
                             Some(PreferredGift {
                                 item_id,
                                 name: names.get(&item_id).cloned().unwrap_or_default(),
+                                category: gift_category(item_id),
                                 discovered,
                                 gifted_today,
                             })

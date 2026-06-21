@@ -60,10 +60,10 @@ const rtf = new Intl.RelativeTimeFormat(
   { numeric: 'auto' }
 );
 
-export function formatRelativeTime(epochSecs: number): string {
-  if (!Number.isFinite(epochSecs)) return 'unknown';
+export function formatRelativeTime(unixSeconds: number): string {
+  if (!Number.isFinite(unixSeconds)) return 'unknown';
 
-  const relMs = epochSecs * 1000 - Date.now();
+  const relMs = unixSeconds * 1000 - Date.now();
   const absMs = Math.abs(relMs);
 
   if (absMs < 60_000) return rtf.format(Math.round(relMs / 1_000), 'second');

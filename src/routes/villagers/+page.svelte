@@ -1,13 +1,19 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { commands, type Role, type Villager } from '$lib/bindings';
+  import { type Role } from '$lib/bindings';
+  import { snapshot } from '$lib/snapshot.svelte';
+  import { clock } from '$lib/clock.svelte';
+  import { liveVillager } from '$lib/time';
   import { ROLES, roleLabel } from '$lib/utils';
   import { PersistedState } from '$lib/persisted.svelte';
   import FilterToggle from '$lib/components/FilterToggle.svelte';
 
-  let villagers = $state<Villager[]>([]);
-  let error = $state('');
-  let loading = $state(true);
+  let section = $derived(snapshot.current?.villagers ?? null);
+  let tz = $derived(snapshot.current?.tzOffset ?? 0);
+  let loading = $derived(snapshot.current === null);
+  let error = $derived(section?.status === 'error' ? section.error : '');
+  let villagers = $derived(
+    section?.status === 'ok' ? section.data.map((v) => liveVillager(v, clock.nowSecs, tz)) : []
+  );
 
   const onlyUnlocked = new PersistedState('villagers.unlocked', true);
   const onlyFriendshipNeeded = new PersistedState('villagers.toLevel', false);
@@ -31,17 +37,6 @@
       ? selectedRoles.current.filter((r) => r !== role)
       : [...selectedRoles.current, role];
   }
-
-  onMount(async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const result = await commands.getVillagers(now);
-    loading = false;
-    if (result.status === 'ok') {
-      villagers = result.data;
-    } else {
-      error = JSON.stringify(result.error);
-    }
-  });
 </script>
 
 <main>

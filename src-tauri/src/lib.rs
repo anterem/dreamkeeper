@@ -1,20 +1,36 @@
 use cipher::{BlockModeDecrypt, KeyInit, block_padding::Pkcs7};
 use known_folders::{KnownFolder, get_known_folder_path};
+use notify_debouncer_full::{
+    DebounceEventResult, Debouncer, RecommendedCache, new_debouncer,
+    notify::{RecommendedWatcher, RecursiveMode},
+};
 use std::{
+    ffi::OsStr,
     fs::read,
     io::{Cursor, Read},
     path::{Path, PathBuf},
     sync::Mutex,
-    time::UNIX_EPOCH,
+    time::{Duration, UNIX_EPOCH},
 };
+use tauri::{AppHandle, Manager};
+use tauri_specta::Event;
 
 mod critters;
 mod game_data;
-mod today;
+mod snapshot;
 mod villagers;
 
 const KEY: [u8; 32] =
     hex_literal::hex!("62357168683873614a38556c444a557a545a5864325467366d626f3857386e35");
+
+const SAVE_FILE_NAME: &str = "profile.json";
+
+const WATCH_DEBOUNCE: Duration = Duration::from_millis(400);
+// retry in case the read lands mid-write and fails
+const READ_RETRIES: u32 = 5;
+const RETRY_DELAY: Duration = Duration::from_millis(120);
+
+type SaveWatcher = Debouncer<RecommendedWatcher, RecommendedCache>;
 
 #[derive(Debug, thiserror::Error, serde::Serialize, specta::Type)]
 pub enum AppError {
@@ -29,13 +45,18 @@ pub enum AppError {
 }
 
 pub struct LoadedSave {
+    pub path: PathBuf,
     pub contents: serde_json::Value,
     pub storefront: game_data::Storefront,
 }
 
 pub struct AppState {
     pub save: Mutex<Option<LoadedSave>>,
+    pub watcher: Mutex<Option<SaveWatcher>>,
 }
+
+#[derive(Clone, serde::Serialize, specta::Type, tauri_specta::Event)]
+pub struct SaveChanged(snapshot::Snapshot);
 
 impl From<std::io::Error> for AppError {
     fn from(err: std::io::Error) -> Self {
@@ -49,6 +70,16 @@ pub struct SaveFile {
     storefront: game_data::Storefront,
     #[serde(rename = "lastModified")]
     modified_secs: u32,
+}
+
+// in the save as e.g. "-25200s"
+pub fn read_tz_offset(save: &serde_json::Value) -> i64 {
+    save.pointer("/World/TimeZoneOffset")
+        .and_then(|v| {
+            v.as_i64()
+                .or_else(|| v.as_str()?.trim_end_matches('s').parse::<i64>().ok())
+        })
+        .unwrap_or(0)
 }
 
 fn decrypt_save_file(path: &Path) -> Result<serde_json::Value, AppError> {
@@ -74,18 +105,102 @@ fn decrypt_save_file(path: &Path) -> Result<serde_json::Value, AppError> {
     serde_json::from_str(&contents).map_err(|e| AppError::Parse(e.to_string()))
 }
 
+fn decrypt_with_retry(path: &Path) -> Result<serde_json::Value, AppError> {
+    let mut last_err = AppError::NoSaveLoaded;
+    for attempt in 0..READ_RETRIES {
+        match decrypt_save_file(path) {
+            Ok(value) => return Ok(value),
+            Err(err) => {
+                last_err = err;
+                if attempt + 1 < READ_RETRIES {
+                    std::thread::sleep(RETRY_DELAY);
+                }
+            }
+        }
+    }
+    Err(last_err)
+}
+
+fn store_and_emit(app: &AppHandle, loaded: LoadedSave) {
+    let snapshot = snapshot::build(&loaded);
+    *app.state::<AppState>().save.lock().unwrap() = Some(loaded);
+    let _ = SaveChanged(snapshot).emit(app);
+}
+
+fn reload(app: &AppHandle) {
+    let (path, storefront) = {
+        let state = app.state::<AppState>();
+        let guard = state.save.lock().unwrap();
+        match guard.as_ref() {
+            Some(loaded) => (loaded.path.clone(), loaded.storefront.clone()),
+            None => return,
+        }
+    };
+    let Ok(contents) = decrypt_with_retry(&path) else {
+        return;
+    };
+    store_and_emit(
+        app,
+        LoadedSave {
+            path,
+            contents,
+            storefront,
+        },
+    );
+}
+
+fn watch_save(app: &AppHandle, path: PathBuf) -> Result<(), AppError> {
+    let folder = path
+        .parent()
+        .ok_or_else(|| AppError::Io("save file has no parent folder".to_string()))?
+        .to_path_buf();
+
+    let handler_app = app.clone();
+    let mut debouncer = new_debouncer(
+        WATCH_DEBOUNCE,
+        None,
+        move |result: DebounceEventResult| {
+            let Ok(events) = result else {
+                return;
+            };
+            let touched = events.iter().any(|event| {
+                event
+                    .paths
+                    .iter()
+                    .any(|p| p.file_name() == Some(OsStr::new(SAVE_FILE_NAME)))
+            });
+            if touched {
+                reload(&handler_app);
+            }
+        },
+    )
+    .map_err(|e| AppError::Io(e.to_string()))?;
+
+    debouncer
+        .watch(&folder, RecursiveMode::NonRecursive)
+        .map_err(|e| AppError::Io(e.to_string()))?;
+
+    *app.state::<AppState>().watcher.lock().unwrap() = Some(debouncer);
+    Ok(())
+}
+
 #[tauri::command]
 #[specta::specta]
 fn load_save_file(
+    app: AppHandle,
     path: PathBuf,
     storefront: game_data::Storefront,
-    state: tauri::State<AppState>,
 ) -> Result<(), AppError> {
     let contents = decrypt_save_file(&path)?;
-    *state.save.lock().unwrap() = Some(LoadedSave {
-        contents,
-        storefront,
-    });
+    store_and_emit(
+        &app,
+        LoadedSave {
+            path: path.clone(),
+            contents,
+            storefront,
+        },
+    );
+    watch_save(&app, path)?;
     Ok(())
 }
 
@@ -96,7 +211,7 @@ fn get_game_folder() -> PathBuf {
         .join("Disney Dreamlight Valley")
 }
 
-fn get_modified_secs(path: &Path) -> Option<u32> {
+pub(crate) fn get_modified_secs(path: &Path) -> Option<u32> {
     let meta = path.metadata().ok()?;
     let modified = meta.modified().ok()?;
     let duration = modified.duration_since(UNIX_EPOCH).ok()?;
@@ -117,7 +232,7 @@ fn get_save_files() -> Result<Vec<SaveFile>, AppError> {
         .filter_map(|entry| entry.ok())
         .filter(|entry| entry.file_type().is_ok_and(|ft| ft.is_dir()))
         .filter_map(|entry| {
-            let save_file_path = entry.path().join("profile.json");
+            let save_file_path = entry.path().join(SAVE_FILE_NAME);
             if !save_file_path.try_exists().unwrap_or_default() {
                 return None;
             }
@@ -144,15 +259,14 @@ fn get_save_files() -> Result<Vec<SaveFile>, AppError> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let specta_builder =
-        tauri_specta::Builder::<tauri::Wry>::new().commands(tauri_specta::collect_commands![
+    let specta_builder = tauri_specta::Builder::<tauri::Wry>::new()
+        .commands(tauri_specta::collect_commands![
             get_save_files,
             load_save_file,
             game_data::get_display_names,
-            critters::get_critters,
-            villagers::get_villagers,
-            today::get_today
-        ]);
+            snapshot::get_snapshot
+        ])
+        .events(tauri_specta::collect_events![SaveChanged]);
 
     #[cfg(debug_assertions)]
     specta_builder
@@ -165,9 +279,14 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppState {
             save: Mutex::new(None),
+            watcher: Mutex::new(None),
         })
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(specta_builder.invoke_handler())
+        .setup(move |app| {
+            specta_builder.mount_events(app);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

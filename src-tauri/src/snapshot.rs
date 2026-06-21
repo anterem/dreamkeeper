@@ -1,7 +1,7 @@
 use super::critters::{self, Critter};
 use super::villagers::{self, Villager};
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(tag = "status", rename_all = "camelCase")]
 pub enum Section<T> {
     Ok { data: T },
@@ -19,24 +19,28 @@ impl<T> From<Result<T, super::AppError>> for Section<T> {
     }
 }
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
-pub struct Today {
+pub struct Snapshot {
+    tz_offset: i64,
+    modified_secs: u32,
     critters: Section<Vec<Critter>>,
     villagers: Section<Vec<Villager>>,
 }
 
+pub fn build(loaded: &super::LoadedSave) -> Snapshot {
+    Snapshot {
+        tz_offset: super::read_tz_offset(&loaded.contents),
+        modified_secs: super::get_modified_secs(&loaded.path).unwrap_or(0),
+        critters: critters::collect(loaded).into(),
+        villagers: villagers::collect(loaded).into(),
+    }
+}
+
 #[tauri::command]
 #[specta::specta]
-pub fn get_today(
-    state: tauri::State<super::AppState>,
-    now_utc_secs: i64,
-) -> Result<Today, super::AppError> {
+pub fn get_snapshot(state: tauri::State<super::AppState>) -> Result<Snapshot, super::AppError> {
     let guard = state.save.lock().unwrap();
     let loaded = guard.as_ref().ok_or(super::AppError::NoSaveLoaded)?;
-
-    Ok(Today {
-        critters: critters::collect(loaded, now_utc_secs).into(),
-        villagers: villagers::collect(loaded, now_utc_secs).into(),
-    })
+    Ok(build(loaded))
 }

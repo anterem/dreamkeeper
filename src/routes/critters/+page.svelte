@@ -1,66 +1,60 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { commands, type Critter } from '$lib/bindings';
+  import { snapshot } from '$lib/snapshot.svelte';
+  import { clock } from '$lib/clock.svelte';
+  import { liveCritter, localWeekday, type LiveCritter } from '$lib/time';
   import { WEEKDAY_NAMES, formatSchedule } from '$lib/utils';
   import { PersistedState } from '$lib/persisted.svelte';
   import FilterToggle from '$lib/components/FilterToggle.svelte';
 
-  let critters = $state<Critter[]>([]);
-  let error = $state('');
-  let loading = $state(true);
+  let section = $derived(snapshot.current?.critters ?? null);
+  let tz = $derived(snapshot.current?.tzOffset ?? 0);
+  let loading = $derived(snapshot.current === null);
+  let error = $derived(section?.status === 'error' ? section.error : '');
+  let critters = $derived(
+    section?.status === 'ok' ? section.data.map((c) => liveCritter(c, clock.nowSecs, tz)) : []
+  );
 
-  // 0–6, starts sunday
-  const todayIndex = new Date().getDay();
-  let selectedDay = $state(todayIndex);
-  let isToday = $derived(selectedDay === todayIndex);
-  let prevDayName = $derived(WEEKDAY_NAMES[(selectedDay + 6) % 7]);
-  let nextDayName = $derived(WEEKDAY_NAMES[(selectedDay + 1) % 7]);
+  let todayIndex = $derived(localWeekday(clock.nowSecs, tz));
+  let selectedDay = $state<number | null>(null);
+  let activeDay = $derived(selectedDay ?? todayIndex);
+  let isToday = $derived(activeDay === todayIndex);
+  let prevDayName = $derived(WEEKDAY_NAMES[(activeDay + 6) % 7]);
+  let nextDayName = $derived(WEEKDAY_NAMES[(activeDay + 1) % 7]);
 
   const onlyAvailable = new PersistedState('critters.availableNow', false);
   const onlyToFeed = new PersistedState('critters.toFeed', false);
   const onlyUntamed = new PersistedState('critters.untamed', false);
 
   let dayCritters = $derived.by(() => {
-    let list = critters.filter((c) => c.schedule[selectedDay].length > 0);
+    let list = critters.filter((c) => c.schedule[activeDay].length > 0);
     if (isToday && onlyAvailable.current) list = list.filter((c) => c.availableNow);
     if (isToday && onlyToFeed.current) list = list.filter((c) => c.needsFeeding);
     if (onlyUntamed.current) list = list.filter((c) => !c.tamed);
-    return list.toSorted(compareOnDay(selectedDay));
+    return list.toSorted(compareOnDay(activeDay));
   });
   let anyFilterActive = $derived(
     onlyUntamed.current || (isToday && (onlyAvailable.current || onlyToFeed.current))
   );
 
   function prevDay() {
-    selectedDay = (selectedDay + 6) % 7;
+    selectedDay = (activeDay + 6) % 7;
   }
 
   function nextDay() {
-    selectedDay = (selectedDay + 1) % 7;
+    selectedDay = (activeDay + 1) % 7;
   }
 
   function goToToday() {
-    selectedDay = todayIndex;
+    selectedDay = null;
   }
 
   function compareOnDay(day: number) {
-    return (a: Critter, b: Critter) => {
+    return (a: LiveCritter, b: LiveCritter) => {
       const sa = a.schedule[day][0];
       const sb = b.schedule[day][0];
       return sa.start - sb.start || sb.end - sa.end || a.speciesRank - b.speciesRank;
     };
   }
-
-  onMount(async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const result = await commands.getCritters(now);
-    loading = false;
-    if (result.status === 'ok') {
-      critters = result.data;
-    } else {
-      error = JSON.stringify(result.error);
-    }
-  });
 </script>
 
 <main>
@@ -81,9 +75,9 @@
       <div class="day-title">
         {#if isToday}
           <h2>Today</h2>
-          <p class="day-note">{WEEKDAY_NAMES[selectedDay]}</p>
+          <p class="day-note">{WEEKDAY_NAMES[activeDay]}</p>
         {:else}
-          <h2>{WEEKDAY_NAMES[selectedDay]}</h2>
+          <h2>{WEEKDAY_NAMES[activeDay]}</h2>
           <button class="today-link" onclick={goToToday}>return to today</button>
         {/if}
       </div>
@@ -140,7 +134,7 @@
             </span>
             {#if critter.tamed}<span class="badge" title="tamed">♥</span>{/if}
             <span class="leader" aria-hidden="true"></span>
-            <span class="time">{formatSchedule(critter.schedule[selectedDay])}</span>
+            <span class="time">{formatSchedule(critter.schedule[activeDay])}</span>
           </li>
         {/each}
       </ol>

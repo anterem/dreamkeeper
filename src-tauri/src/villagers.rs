@@ -81,7 +81,7 @@ static VILLAGER_ROSTER: &[u32] = &[
     10000166, // Tigger
 ];
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum Role {
     Gardening,
@@ -102,7 +102,7 @@ fn role_from_profession_id(id: u64) -> Option<Role> {
     }
 }
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum CollectionStatus {
     InVillage,
@@ -110,7 +110,7 @@ pub enum CollectionStatus {
     Locked,
 }
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub enum GiftCategory {
     Produce,
@@ -137,17 +137,17 @@ fn gift_category(item_id: u32) -> GiftCategory {
     }
 }
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct PreferredGift {
     pub item_id: u32,
     pub name: String,
     pub category: GiftCategory,
     pub discovered: bool,
-    pub gifted_today: bool,
+    pub gifted: bool,
 }
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Villager {
     pub id: u32,
@@ -158,7 +158,7 @@ pub struct Villager {
     pub friendship_xp: u32,
     pub is_maxed: bool,
     pub gifts: Vec<PreferredGift>,
-    pub giftable_today: bool,
+    pub last_gift_secs: Option<i64>,
 }
 
 fn status_of(entry: Option<&Value>) -> CollectionStatus {
@@ -169,26 +169,9 @@ fn status_of(entry: Option<&Value>) -> CollectionStatus {
     }
 }
 
-// gift reset time
-fn last_5am_utc(now_utc_secs: i64, tz_offset: i64) -> i64 {
-    let local_now = now_utc_secs + tz_offset;
-    let local_5am = (local_now - 5 * 3600).div_euclid(86400) * 86400 + 5 * 3600;
-    local_5am - tz_offset
-}
-
-pub(crate) fn collect(loaded: &LoadedSave, now_utc_secs: i64) -> Result<Vec<Villager>, AppError> {
+pub(crate) fn collect(loaded: &LoadedSave) -> Result<Vec<Villager>, AppError> {
     let save = &loaded.contents;
     let storefront = &loaded.storefront;
-
-    let tz_offset = save
-        .pointer("/World/TimeZoneOffset")
-        .and_then(|v| {
-            v.as_i64()
-                .or_else(|| v.as_str()?.trim_end_matches('s').parse::<i64>().ok())
-        })
-        .unwrap_or(0);
-
-    let cutoff_utc = last_5am_utc(now_utc_secs, tz_offset);
 
     let names = super::game_data::cached_item_names(storefront)?;
 
@@ -223,12 +206,11 @@ pub(crate) fn collect(loaded: &LoadedSave, now_utc_secs: i64) -> Result<Vec<Vill
                 .and_then(|v| v.as_u64())
                 .and_then(role_from_profession_id);
 
-            let last_gift = entry
+            let last_gift_secs = entry
                 .and_then(|e| e.get("LastGiftDate"))
                 .and_then(|v| v.as_str())
                 .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
                 .map(|dt| dt.timestamp());
-            let giftable_today = last_gift.map_or(true, |ts| ts < cutoff_utc);
 
             let discovered = entry
                 .and_then(|e| e.get("PreferredItemStatus"))
@@ -241,20 +223,18 @@ pub(crate) fn collect(loaded: &LoadedSave, now_utc_secs: i64) -> Result<Vec<Vill
                         .iter()
                         .filter_map(|slot| {
                             let item_id = slot.get("PreferredItemId")?.as_u64()? as u32;
-                            let slot_gifted =
+                            let gifted =
                                 slot.get("Gifted").and_then(|v| v.as_bool()).unwrap_or(false);
                             let discovered = discovered
                                 .and_then(|d| d.get(&item_id.to_string()))
                                 .and_then(|s| s.as_str())
                                 == Some("PreferredItemStatus_Discovered");
-                            // ignore gifted status if after gift daily reset
-                            let gifted_today = !giftable_today && slot_gifted;
                             Some(PreferredGift {
                                 item_id,
                                 name: names.get(&item_id).cloned().unwrap_or_default(),
                                 category: gift_category(item_id),
                                 discovered,
-                                gifted_today,
+                                gifted,
                             })
                         })
                         .collect()
@@ -270,51 +250,10 @@ pub(crate) fn collect(loaded: &LoadedSave, now_utc_secs: i64) -> Result<Vec<Vill
                 friendship_xp,
                 is_maxed: friendship_level == 10,
                 gifts,
-                giftable_today,
+                last_gift_secs,
             }
         })
         .collect();
 
     Ok(villagers)
-}
-
-#[tauri::command]
-#[specta::specta]
-pub fn get_villagers(
-    state: tauri::State<super::AppState>,
-    now_utc_secs: i64,
-) -> Result<Vec<Villager>, super::AppError> {
-    let guard = state.save.lock().unwrap();
-    let loaded = guard.as_ref().ok_or(super::AppError::NoSaveLoaded)?;
-    collect(loaded, now_utc_secs)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::last_5am_utc;
-
-    const H: i64 = 3600;
-    const DAY: i64 = 86400;
-
-    #[test]
-    fn before_5am_uses_yesterdays_reset() {
-        assert_eq!(last_5am_utc(3 * H, 0), 5 * H - DAY);
-    }
-
-    #[test]
-    fn after_5am_uses_todays_reset() {
-        assert_eq!(last_5am_utc(6 * H, 0), 5 * H);
-    }
-
-    #[test]
-    fn exactly_5am_is_todays_reset() {
-        assert_eq!(last_5am_utc(5 * H, 0), 5 * H);
-    }
-
-    #[test]
-    fn pre_5am_respects_timezone() {
-        let tz = 10 * H;
-        let now = -tz + 2 * H;
-        assert_eq!(last_5am_utc(now, tz), (5 * H - DAY) - tz);
-    }
 }

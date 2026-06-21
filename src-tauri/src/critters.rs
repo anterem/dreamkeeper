@@ -585,22 +585,12 @@ static CRITTER_DATA: &[CritterDef] = &[
     },
 ];
 
-// position in CRITTER_DATA is the canonical species order, used as a sort tiebreaker
+// sort by in game order
 fn species_rank(species: &str) -> u32 {
     CRITTER_DATA
         .iter()
         .position(|c| c.species == species)
         .unwrap_or(usize::MAX) as u32
-}
-
-// 0 to 6 - starts sunday
-fn weekday_index(local_secs: i64) -> usize {
-    (local_secs.div_euclid(86400) + 4).rem_euclid(7) as usize
-}
-
-fn is_available_at(days: &[AvailableHours; 7], local_secs: i64) -> bool {
-    let hour = (local_secs % 86400) / 3600;
-    days[weekday_index(local_secs)] >> hour & 1 == 1
 }
 
 #[derive(Clone, Copy, PartialEq, Debug, serde::Serialize, specta::Type)]
@@ -626,7 +616,7 @@ fn day_schedule(day: AvailableHours) -> Vec<Schedule> {
     schedule
 }
 
-#[derive(serde::Serialize, specta::Type)]
+#[derive(Clone, serde::Serialize, specta::Type)]
 #[serde(rename_all = "camelCase")]
 pub struct Critter {
     pub item_id: u32,
@@ -635,41 +625,13 @@ pub struct Critter {
     pub species_rank: u32,
     pub note: Option<String>,
     pub schedule: Vec<Vec<Schedule>>,
-    pub available_now: bool,
     pub tamed: bool,
-    pub fed_today: bool,
-    pub needs_feeding: bool,
+    pub last_feeding_secs: Option<i64>,
 }
 
-#[tauri::command]
-#[specta::specta]
-pub fn get_critters(
-    state: tauri::State<super::AppState>,
-    now_utc_secs: i64,
-) -> Result<Vec<Critter>, super::AppError> {
-    let guard = state.save.lock().unwrap();
-    let loaded = guard.as_ref().ok_or(super::AppError::NoSaveLoaded)?;
-    collect(loaded, now_utc_secs)
-}
-
-pub(crate) fn collect(
-    loaded: &super::LoadedSave,
-    now_utc_secs: i64,
-) -> Result<Vec<Critter>, super::AppError> {
+pub(crate) fn collect(loaded: &super::LoadedSave) -> Result<Vec<Critter>, super::AppError> {
     let save = &loaded.contents;
     let storefront = &loaded.storefront;
-
-    let tz_offset = save
-        .pointer("/World/TimeZoneOffset")
-        .and_then(|v| {
-            v.as_i64()
-                .or_else(|| v.as_str()?.trim_end_matches('s').parse::<i64>().ok())
-        })
-        .unwrap_or(0);
-
-    let local_now = now_utc_secs + tz_offset;
-    let local_today_secs = local_now % 86400;
-    let local_midnight = local_now - local_today_secs;
 
     let name_map = super::game_data::cached_item_names(storefront)?;
 
@@ -691,7 +653,8 @@ pub(crate) fn collect(
         })
         .unwrap_or_default();
 
-    let fed_today_ids: HashSet<u32> = save
+    // recorded as UTC but actually local time
+    let last_feeding_by_id: HashMap<u32, i64> = save
         .pointer("/World/Critters")
         .and_then(|v| v.as_array())
         .map(|critters| {
@@ -699,12 +662,11 @@ pub(crate) fn collect(
                 .iter()
                 .filter_map(|c| {
                     let id = c.get("CritterItemID")?.as_u64()? as u32;
-                    // last feeding time is local time, ignore the Z
                     let time_str = c.get("LastFeedingTime")?.as_str()?;
                     let ts = chrono::DateTime::parse_from_rfc3339(time_str)
-                        .map(|dt| dt.timestamp())
-                        .ok()?;
-                    if ts >= local_midnight { Some(id) } else { None }
+                        .ok()?
+                        .timestamp();
+                    Some((id, ts))
                 })
                 .collect()
         })
@@ -714,10 +676,6 @@ pub(crate) fn collect(
         .iter()
         .filter_map(|entry| {
             let &wild_id = name_to_id.get(entry.name)?;
-            let available_now = is_available_at(&entry.days, local_now);
-            let tamed = tamed_names.contains(entry.name);
-            let fed_today = fed_today_ids.contains(&wild_id);
-            let needs_feeding = available_now && !tamed && !fed_today;
             let schedule: Vec<Vec<Schedule>> =
                 entry.days.iter().map(|&day| day_schedule(day)).collect();
             Some(Critter {
@@ -727,10 +685,8 @@ pub(crate) fn collect(
                 species_rank: species_rank(entry.species),
                 note: entry.note.as_ref().map(|n| n.as_str().to_string()),
                 schedule,
-                available_now,
-                tamed,
-                fed_today,
-                needs_feeding,
+                tamed: tamed_names.contains(entry.name),
+                last_feeding_secs: last_feeding_by_id.get(&wild_id).copied(),
             })
         })
         .collect();
@@ -741,75 +697,6 @@ pub(crate) fn collect(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    // seconds to midnight
-    const SUN: i64 = 259200;
-    const MON: i64 = 345600;
-    const THU: i64 = 0;
-    const SAT: i64 = 172800;
-
-    fn at(base: i64, hour: u8) -> i64 {
-        base + hour as i64 * 3600
-    }
-
-    #[test]
-    fn na_day_is_always_unavailable() {
-        let entry = &CRITTER_DATA[9];
-        assert_eq!(entry.name, "White Squirrel");
-        assert!(!is_available_at(&entry.days, at(MON, 12)));
-        assert!(!is_available_at(&entry.days, at(THU, 0)));
-        assert!(!is_available_at(&entry.days, at(SAT, 23)));
-    }
-
-    #[test]
-    fn all_day_window_covers_full_day() {
-        let entry = &CRITTER_DATA[9];
-        assert!(is_available_at(&entry.days, at(SUN, 0)));
-        assert!(is_available_at(&entry.days, at(SUN, 12)));
-        assert!(is_available_at(&entry.days, at(SUN, 23)));
-    }
-
-    #[test]
-    fn am_window_matches_midnight_to_noon() {
-        let entry = &CRITTER_DATA[5];
-        assert_eq!(entry.name, "Black Squirrel");
-        assert!(is_available_at(&entry.days, at(SUN, 0)));
-        assert!(is_available_at(&entry.days, at(SUN, 11)));
-        assert!(!is_available_at(&entry.days, at(SUN, 12)));
-        assert!(!is_available_at(&entry.days, at(SUN, 23)));
-    }
-
-    #[test]
-    fn pm_window_matches_noon_to_midnight() {
-        let entry = &CRITTER_DATA[6]; // Classic Squirrel: PM on Sunday
-        assert_eq!(entry.name, "Classic Squirrel");
-        assert!(!is_available_at(&entry.days, at(SUN, 0)));
-        assert!(!is_available_at(&entry.days, at(SUN, 11)));
-        assert!(is_available_at(&entry.days, at(SUN, 12)));
-        assert!(is_available_at(&entry.days, at(SUN, 23)));
-    }
-
-    #[test]
-    fn custom_window_boundaries() {
-        let owl = CRITTER_DATA.iter().find(|e| e.name == "White Owl").unwrap();
-        assert!(!is_available_at(&owl.days, at(SUN, 14)));
-        assert!(is_available_at(&owl.days, at(SUN, 15)));
-        assert!(is_available_at(&owl.days, at(SUN, 19)));
-        assert!(!is_available_at(&owl.days, at(SUN, 20)));
-    }
-
-    #[test]
-    fn dual_window_golden_goose() {
-        let goose = CRITTER_DATA
-            .iter()
-            .find(|e| e.name == "Golden Goose")
-            .unwrap();
-        assert!(is_available_at(&goose.days, at(SUN, 7)));
-        assert!(!is_available_at(&goose.days, at(SUN, 8)));
-        assert!(is_available_at(&goose.days, at(SUN, 19)));
-        assert!(!is_available_at(&goose.days, at(SUN, 20)));
-        assert!(!is_available_at(&goose.days, at(SUN, 12)));
-    }
 
     #[test]
     fn mask_decodes_to_day_schedule() {
@@ -826,16 +713,5 @@ mod tests {
             day_schedule(hours(20, 24)),
             vec![Schedule { start: 20, end: 24 }]
         );
-    }
-
-    #[test]
-    fn day_of_week_gating() {
-        let entry = CRITTER_DATA
-            .iter()
-            .find(|e| e.name == "Brown Raven")
-            .unwrap();
-        assert!(!is_available_at(&entry.days, at(SUN, 12)));
-        assert!(!is_available_at(&entry.days, at(MON, 12)));
-        assert!(is_available_at(&entry.days, at(MON + 86400, 12)));
     }
 }

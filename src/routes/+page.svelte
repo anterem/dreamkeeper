@@ -1,18 +1,27 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { commands, type Today } from '$lib/bindings';
+  import { snapshot } from '$lib/snapshot.svelte';
+  import { clock } from '$lib/clock.svelte';
+  import { liveCritter, liveVillager, localWeekday } from '$lib/time';
   import { formatSchedule, roleLabel } from '$lib/utils';
   import Section from '$lib/components/Section.svelte';
 
-  let today = $state<Today | null>(null);
-  let error = $state('');
-  let loading = $state(true);
+  let snap = $derived(snapshot.current);
+  let tz = $derived(snap?.tzOffset ?? 0);
+  let loading = $derived(snap === null);
+  let weekday = $derived(localWeekday(clock.nowSecs, tz));
 
-  const weekday = new Date().getDay();
-  let critters = $derived(today?.critters.status === 'ok' ? today.critters.data : null);
+  let critters = $derived(
+    snap?.critters.status === 'ok'
+      ? snap.critters.data.map((c) => liveCritter(c, clock.nowSecs, tz))
+      : null
+  );
   let toFeed = $derived(critters ? critters.filter((c) => c.needsFeeding) : []);
 
-  let villagers = $derived(today?.villagers.status === 'ok' ? today.villagers.data : null);
+  let villagers = $derived(
+    snap?.villagers.status === 'ok'
+      ? snap.villagers.data.map((v) => liveVillager(v, clock.nowSecs, tz))
+      : null
+  );
   let toGift = $derived(
     villagers
       ? villagers.filter(
@@ -20,32 +29,21 @@
         )
       : []
   );
-
-  onMount(async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const result = await commands.getToday(now);
-    loading = false;
-    if (result.status === 'ok') {
-      today = result.data;
-    } else {
-      error = JSON.stringify(result.error);
-    }
-  });
 </script>
 
 <main>
   {#if loading}
     <p class="status"><em>Reading your save…</em></p>
-  {:else if error}
-    <p class="status">Something went amiss: <span class="error">{error}</span></p>
-  {:else if today}
+  {:else if snap}
     <Section
       title="Critters"
       href="/critters"
       summary={toFeed.length > 0 ? `${toFeed.length} to feed` : undefined}
     >
-      {#if today.critters.status === 'error'}
-        <p class="muted">Couldn't read critters: <span class="error">{today.critters.error}</span></p>
+      {#if snap.critters.status === 'error'}
+        <p class="muted">
+          Couldn't read critters: <span class="error">{snap.critters.error}</span>
+        </p>
       {:else if toFeed.length === 0}
         <p class="muted"><em>All fed for today.</em></p>
       {:else}
@@ -65,9 +63,9 @@
       href="/villagers"
       summary={toGift.length > 0 ? `${toGift.length} to befriend` : undefined}
     >
-      {#if today.villagers.status === 'error'}
+      {#if snap.villagers.status === 'error'}
         <p class="muted">
-          Couldn't read villagers: <span class="error">{today.villagers.error}</span>
+          Couldn't read villagers: <span class="error">{snap.villagers.error}</span>
         </p>
       {:else if toGift.length === 0}
         <p class="muted"><em>All gifted for today.</em></p>

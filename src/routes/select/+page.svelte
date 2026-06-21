@@ -3,9 +3,9 @@
   import { goto } from '$app/navigation';
   import { commands, type SaveFile } from '$lib/bindings';
   import { loadedSaveFile } from '$lib/store';
-  import { formatRelativeTime } from '$lib/utils';
+  import { snapshot } from '$lib/snapshot.svelte';
+  import { liveRelativeTime } from '$lib/clock.svelte';
 
-  let selectedSaveFile = $state<SaveFile | null>(null);
   let saveFiles: SaveFile[] = $state([]);
   let saveFilesError = $state('');
   let loadError = $state('');
@@ -13,33 +13,29 @@
 
   async function getSaveFiles() {
     const res = await commands.getSaveFiles();
-    if (res.status === 'ok') saveFiles = res.data;
-    else saveFilesError = JSON.stringify(res.error);
+    if (res.status !== 'ok') {
+      saveFilesError = JSON.stringify(res.error);
+      return;
+    }
+    saveFiles = res.data;
+    if (saveFiles.length === 1) load(saveFiles[0]);
   }
 
-  $effect(() => {
-    if (saveFiles.length === 1) selectedSaveFile = saveFiles[0];
-  });
-
-  $effect(() => {
-    if (!selectedSaveFile) return;
-    const file = selectedSaveFile;
+  async function load(file: SaveFile) {
     loading = true;
     loadError = '';
-    commands.loadSaveFile(file.path, file.storefront).then((result) => {
+    const result = await commands.loadSaveFile(file.path, file.storefront);
+    if (result.status === 'ok') {
+      await snapshot.refresh();
+      loadedSaveFile.set(file);
+      goto('/');
+    } else {
       loading = false;
-      if (result.status === 'ok') {
-        loadedSaveFile.set(file);
-        goto('/');
-      } else {
-        loadError = JSON.stringify(result.error);
-      }
-    });
-  });
+      loadError = JSON.stringify(result.error);
+    }
+  }
 
-  onMount(() => {
-    getSaveFiles();
-  });
+  onMount(getSaveFiles);
 </script>
 
 <main>
@@ -57,10 +53,10 @@
       {#each saveFiles as file}
         <li>
           <label>
-            <input type="radio" name="save-file" value={file} bind:group={selectedSaveFile} />
+            <input type="radio" name="save-file" onchange={() => load(file)} />
             <span>
               <span class="storefront">{file.storefront}</span>
-              Last updated <em>{formatRelativeTime(file.lastModified)}</em>
+              Last updated <em>{liveRelativeTime(file.lastModified)}</em>
             </span>
           </label>
         </li>

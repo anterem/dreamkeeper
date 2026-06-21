@@ -1,18 +1,33 @@
 <script lang="ts">
-  import { page } from '$app/stores';
+  import { onMount } from 'svelte';
+  import { page } from '$app/state';
   import PageHeader from '$lib/components/PageHeader.svelte';
+  import { snapshot } from '$lib/snapshot.svelte';
+  import { liveRelativeTime } from '$lib/clock.svelte';
   import '../app.css';
 
   let { children } = $props();
 
-  let isHome = $derived($page.url.pathname === '/');
+  let isHome = $derived(page.url.pathname === '/');
+  let lastUpdated = $derived(
+    snapshot.current ? liveRelativeTime(snapshot.current.modifiedSecs) : ''
+  );
+
+  onMount(() => {
+    snapshot.init();
+  });
 </script>
 
 <div id="page">
-  {#if !isHome}
-    <a class="home-link" href="/"><span class="arrow" aria-hidden="true">☜</span> home</a>
-  {/if}
-  <PageHeader title={$page.data.title} />
+  <div class="top-bar">
+    {#if !isHome}
+      <a class="home-link" href="/"><span class="arrow" aria-hidden="true">☜</span> home</a>
+    {/if}
+    {#if snapshot.current}
+      <p class="last-updated">updated <span class="time">{lastUpdated}</span></p>
+    {/if}
+  </div>
+  <PageHeader title={page.data.title} />
 
   <div class="page-inner">
     {@render children()}
@@ -60,11 +75,18 @@
     margin: 0 auto;
   }
 
-  .home-link {
+  .top-bar {
     position: absolute;
-    top: var(--space-6);
+    top: var(--space-3);
     left: var(--frame-content-inset);
+    right: var(--frame-content-inset);
     z-index: 3;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .home-link {
     font-family: var(--font-display);
     font-size: var(--font-size-md);
     color: var(--color-text-muted);
@@ -73,5 +95,19 @@
   }
   .home-link:hover {
     color: var(--color-primary);
+  }
+
+  .last-updated {
+    margin: 0;
+    margin-left: auto;
+    font-family: var(--font-display);
+    font-size: var(--font-size-md);
+    color: var(--color-text-muted);
+  }
+
+  .last-updated .time {
+    font-family: var(--font-body);
+    font-style: italic;
+    font-size: var(--font-size-sm);
   }
 </style>

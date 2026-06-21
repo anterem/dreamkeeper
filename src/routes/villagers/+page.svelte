@@ -18,7 +18,7 @@
   const onlyUnlocked = new PersistedState('villagers.unlocked', true);
   const onlyFriendshipNeeded = new PersistedState('villagers.toLevel', false);
   const onlyGiftable = new PersistedState('villagers.toGift', false);
-  const selectedRoles = new PersistedState<Role[]>('villagers.roles', []);
+  const selectedRole = new PersistedState<Role | null>('villagers.role', null);
 
   let shownVillagers = $derived.by(() => {
     let list = villagers;
@@ -27,15 +27,23 @@
       list = list.filter((v) => v.status === 'inVillage' && !v.isMaxed);
     if (onlyGiftable.current)
       list = list.filter((v) => v.status === 'inVillage' && v.giftableToday && v.gifts.length > 0);
-    if (selectedRoles.current.length > 0)
-      list = list.filter((v) => v.role !== null && selectedRoles.current.includes(v.role));
+    if (selectedRole.current !== null)
+      list = list.filter((v) => v.role === selectedRole.current);
     return list;
   });
 
-  function toggleRole(role: Role) {
-    selectedRoles.current = selectedRoles.current.includes(role)
-      ? selectedRoles.current.filter((r) => r !== role)
-      : [...selectedRoles.current, role];
+  let roleCounts = $derived.by(() => {
+    const counts = new Map<Role, number>();
+    for (const v of villagers) {
+      if (v.status === 'inVillage' && v.role !== null) {
+        counts.set(v.role, (counts.get(v.role) ?? 0) + 1);
+      }
+    }
+    return counts;
+  });
+
+  function selectRole(role: Role) {
+    selectedRole.current = selectedRole.current === role ? null : role;
   }
 </script>
 
@@ -69,9 +77,9 @@
       />
       {#each ROLES as role}
         <FilterToggle
-          label={role}
-          active={selectedRoles.current.includes(role)}
-          onclick={() => toggleRole(role)}
+          label={`${role} (${roleCounts.get(role) ?? 0})`}
+          active={selectedRole.current === role}
+          onclick={() => selectRole(role)}
         />
       {/each}
     </div>

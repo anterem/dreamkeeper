@@ -133,6 +133,7 @@
                 >{/if}
             </span>
             {#if critter.tamed}<span class="badge" title="tamed">♥</span>{/if}
+            <span class="biome">{critter.biome}</span>
             <span class="leader" aria-hidden="true"></span>
             <span class="time">{formatSchedule(critter.schedule[activeDay])}</span>
           </li>
@@ -266,5 +267,11 @@
     flex: none;
     font-size: var(--font-size-sm);
     color: var(--color-accent);
+  }
+
+  .biome {
+    flex: none;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-subtle);
   }
 </style>

@@ -28,6 +28,7 @@ export type Critter = {
 	name: string,
 	species: string,
 	speciesRank: number,
+	biome: string,
 	note: string | null,
 	schedule: Schedule[][],
 	tamed: boolean,

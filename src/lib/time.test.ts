@@ -24,6 +24,7 @@ function critter(overrides: Partial<Critter> = {}): Critter {
     note: null,
     schedule: schedule({}),
     tamed: false,
+    reachable: true,
     lastFeedingSecs: null,
     ...overrides
   };

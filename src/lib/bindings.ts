@@ -31,6 +31,7 @@ export type Critter = {
 	note: string | null,
 	schedule: Schedule[][],
 	tamed: boolean,
+	reachable: boolean,
 	lastFeedingSecs: number | null,
 };
 

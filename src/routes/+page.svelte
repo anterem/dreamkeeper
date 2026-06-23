@@ -2,13 +2,15 @@
   import { snapshot } from '$lib/snapshot.svelte';
   import { clock } from '$lib/clock.svelte';
   import { liveCritter, liveVillager, localWeekday } from '$lib/time';
-  import { formatSchedule, roleLabel } from '$lib/utils';
+  import { checklistLabel, formatSchedule, roleLabel } from '$lib/utils';
   import Section from '$lib/components/Section.svelte';
 
   let snap = $derived(snapshot.current);
   let tz = $derived(snap?.tzOffset ?? 0);
   let loading = $derived(snap === null);
   let weekday = $derived(localWeekday(clock.nowSecs, tz));
+
+  let checklist = $derived(snap?.checklist.status === 'ok' ? snap.checklist.data : null);
 
   let critters = $derived(
     snap?.critters.status === 'ok'
@@ -35,6 +37,22 @@
   {#if loading}
     <p class="status"><em>Reading your save…</em></p>
   {:else if snap}
+    <Section title="Checklist">
+      {#if snap.checklist.status === 'error'}
+        <p class="muted">
+          Couldn't read checklist: <span class="error">{snap.checklist.error}</span>
+        </p>
+      {:else if checklist && checklist.length === 0}
+        <p class="muted"><em>All clear.</em></p>
+      {:else if checklist}
+        <ul class="checklist">
+          {#each checklist as item}
+            <li class="entry"><span class="strong">{checklistLabel(item)}</span></li>
+          {/each}
+        </ul>
+      {/if}
+    </Section>
+
     <Section
       title="Critters"
       href="/critters"
@@ -102,22 +120,28 @@
     container-type: inline-size;
   }
 
-  .columns {
+  .columns,
+  .checklist {
     --column-width: 16rem;
-    display: block;
-    columns: 2;
-    column-gap: var(--space-6);
     width: calc(2 * var(--column-width) + var(--space-6));
   }
 
+  .columns {
+    display: block;
+    columns: 2;
+    column-gap: var(--space-6);
+  }
+
   @container (max-width: 34rem) {
-    .columns {
+    .columns,
+    .checklist {
       columns: 1;
       width: var(--column-width);
     }
   }
 
-  .columns > li {
+  .columns > li,
+  .checklist > li {
     padding: var(--space-2) 0;
     break-inside: avoid;
     font-size: var(--font-size-sm);

@@ -15,6 +15,7 @@ use std::{
 use tauri::{AppHandle, Manager};
 use tauri_specta::Event;
 
+mod checklist;
 mod critters;
 mod game_data;
 mod snapshot;

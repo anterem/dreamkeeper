@@ -1,3 +1,4 @@
+use super::checklist::{self, ChecklistItem};
 use super::critters::{self, Critter};
 use super::villagers::{self, Villager};
 
@@ -26,6 +27,7 @@ pub struct Snapshot {
     modified_secs: u32,
     critters: Section<Vec<Critter>>,
     villagers: Section<Vec<Villager>>,
+    checklist: Section<Vec<ChecklistItem>>,
 }
 
 pub fn build(loaded: &super::LoadedSave) -> Snapshot {
@@ -34,6 +36,7 @@ pub fn build(loaded: &super::LoadedSave) -> Snapshot {
         modified_secs: super::get_modified_secs(&loaded.path).unwrap_or(0),
         critters: critters::collect(loaded).into(),
         villagers: villagers::collect(loaded).into(),
+        checklist: checklist::collect(loaded).into(),
     }
 }
 

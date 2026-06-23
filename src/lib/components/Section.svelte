@@ -6,16 +6,16 @@
     href,
     summary,
     children
-  }: { title: string; href: string; summary?: string; children: Snippet } = $props();
+  }: { title: string; href?: string; summary?: string; children: Snippet } = $props();
 </script>
 
 <section>
   <h2 class="overline">
-    <a {href}>
+    <svelte:element this={href ? 'a' : 'span'} {href} class="heading">
       {title}
-      <span class="arrow" aria-hidden="true">☞</span>
+      {#if href}<span class="arrow" aria-hidden="true">☞</span>{/if}
       {#if summary}<span class="summary">{summary}</span>{/if}
-    </a>
+    </svelte:element>
   </h2>
   {@render children()}
 </section>
@@ -32,7 +32,7 @@
     font-size: var(--font-size-md);
   }
 
-  a {
+  .heading {
     color: inherit;
     text-decoration: none;
     display: flex;
@@ -40,7 +40,7 @@
     gap: var(--space-3);
   }
 
-  a:hover {
+  a.heading:hover {
     color: var(--color-primary);
   }
 

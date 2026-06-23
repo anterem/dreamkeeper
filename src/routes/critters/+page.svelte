@@ -21,19 +21,23 @@
   let prevDayName = $derived(WEEKDAY_NAMES[(activeDay + 6) % 7]);
   let nextDayName = $derived(WEEKDAY_NAMES[(activeDay + 1) % 7]);
 
+  const onlyReachable = new PersistedState('critters.reachable', false);
   const onlyAvailable = new PersistedState('critters.availableNow', false);
   const onlyToFeed = new PersistedState('critters.toFeed', false);
   const onlyUntamed = new PersistedState('critters.untamed', false);
 
   let dayCritters = $derived.by(() => {
     let list = critters.filter((c) => c.schedule[activeDay].length > 0);
+    if (onlyReachable.current) list = list.filter((c) => c.reachable);
     if (isToday && onlyAvailable.current) list = list.filter((c) => c.availableNow);
     if (isToday && onlyToFeed.current) list = list.filter((c) => c.needsFeeding);
     if (onlyUntamed.current) list = list.filter((c) => !c.tamed);
     return list.toSorted(compareOnDay(activeDay));
   });
   let anyFilterActive = $derived(
-    onlyUntamed.current || (isToday && (onlyAvailable.current || onlyToFeed.current))
+    onlyReachable.current ||
+      onlyUntamed.current ||
+      (isToday && (onlyAvailable.current || onlyToFeed.current))
   );
 
   function prevDay() {
@@ -88,6 +92,11 @@
 
     <div class="filters">
       <span class="filters-label">filter by:</span>
+      <FilterToggle
+        label="reachable"
+        active={onlyReachable.current}
+        onclick={() => (onlyReachable.current = !onlyReachable.current)}
+      />
       {#if isToday}
         <FilterToggle
           glyph="●"

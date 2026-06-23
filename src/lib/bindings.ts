@@ -19,7 +19,7 @@ export const events = {
 /* Types */
 export type AppError = ({ Io: string }) & { NotFound?: never; Parse?: never } | ({ Parse: string }) & { Io?: never; NotFound?: never } | ({ NotFound: string }) & { Io?: never; Parse?: never } | "NoSaveLoaded";
 
-export type ChecklistItem = { kind: "moonstoneChest"; biome: string | null };
+export type ChecklistItem = { kind: "moonstoneChest"; biome: string | null } | { kind: "dreamSnapSubmission" } | { kind: "dreamSnapVoting" };
 
 export type CollectionStatus = "inVillage" | "inRealm" | "locked";
 

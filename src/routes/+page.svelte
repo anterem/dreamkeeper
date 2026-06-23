@@ -2,7 +2,8 @@
   import { snapshot } from '$lib/snapshot.svelte';
   import { clock } from '$lib/clock.svelte';
   import { liveCritter, liveVillager, localWeekday } from '$lib/time';
-  import { checklistLabel, formatSchedule, roleLabel } from '$lib/utils';
+  import { checklistLabel } from '$lib/checklist';
+  import { formatSchedule, roleLabel } from '$lib/utils';
   import Section from '$lib/components/Section.svelte';
 
   let snap = $derived(snapshot.current);

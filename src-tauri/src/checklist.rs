@@ -5,6 +5,9 @@ use super::{AppError, LoadedSave};
 // ActivityItem LootPresentForagingOnline is the daily moonstone chest
 const MOONSTONE_CHEST_ITEM_ID: u64 = 31_400_039;
 
+// 5 moonstones per vote, 50 maximum
+const DREAMSNAP_VOTE_REWARD_CAP: u64 = 10;
+
 static BASE_BIOMES: &[(&str, &str)] = &[
     ("BeachLevel", "Dazzle Beach"),
     ("MeadowLevel", "Peaceful Meadow"),
@@ -80,10 +83,25 @@ static EXPANSION_BIOMES: &[(&str, &str)] = &[
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum ChecklistItem {
     MoonstoneChest { biome: Option<String> },
+    DreamSnapSubmission,
+    DreamSnapVoting,
 }
 
 pub(crate) fn collect(loaded: &LoadedSave) -> Result<Vec<ChecklistItem>, AppError> {
-    Ok(moonstone_chests(&loaded.contents))
+    let save = &loaded.contents;
+    let mut items = moonstone_chests(save);
+    let active = active_dreamsnaps(save);
+    if let Some(submitting) = active.first() {
+        if count_field(submitting, "SubmitCount") < 1 {
+            items.push(ChecklistItem::DreamSnapSubmission);
+        }
+    }
+    if let Some(voting) = active.get(1) {
+        if count_field(voting, "VoteCount") < DREAMSNAP_VOTE_REWARD_CAP {
+            items.push(ChecklistItem::DreamSnapVoting);
+        }
+    }
+    Ok(items)
 }
 
 fn moonstone_chests(save: &Value) -> Vec<ChecklistItem> {
@@ -134,4 +152,41 @@ fn biome_of(grid_path: &str) -> Option<&'static str> {
     named(BASE_BIOMES)
         .or_else(|| named(EXPANSION_BIOMES))
         .or_else(|| named(EXPANSION_REGIONS))
+}
+
+// newest competition for submission, second newest for voting
+fn active_dreamsnaps(save: &Value) -> Vec<&Value> {
+    let Some(stats) = save
+        .pointer("/Player/DesignChallenge/Stats")
+        .and_then(|v| v.as_object())
+    else {
+        return Vec::new();
+    };
+
+    let mut active: Vec<(u32, &Value)> = stats
+        .iter()
+        .filter_map(|(key, entry)| {
+            let number = challenge_number(key)?;
+            let reward_sent = entry
+                .get("RewardMessageSent")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            (!reward_sent).then_some((number, entry))
+        })
+        .collect();
+    active.sort_by(|a, b| b.0.cmp(&a.0));
+    active.into_iter().map(|(_, entry)| entry).collect()
+}
+
+fn count_field(entry: &Value, field: &str) -> u64 {
+    entry.get(field).and_then(|v| v.as_u64()).unwrap_or(0)
+}
+
+fn challenge_number(key: &str) -> Option<u32> {
+    key.strip_prefix("DreamSnap")?
+        .chars()
+        .take_while(|c| c.is_ascii_digit())
+        .collect::<String>()
+        .parse()
+        .ok()
 }

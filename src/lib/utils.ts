@@ -1,4 +1,4 @@
-import type { ChecklistItem, Role, Schedule } from './bindings';
+import type { Role, Schedule } from './bindings';
 
 const ROLE_LABELS: Record<Role, string> = {
   gardening: 'Gardening',
@@ -13,13 +13,6 @@ export function roleLabel(role: Role | null): string {
 }
 
 export const ROLES: Role[] = ['gardening', 'fishing', 'mining', 'foraging', 'digging'];
-
-export function checklistLabel(item: ChecklistItem): string {
-  switch (item.kind) {
-    case 'moonstoneChest':
-      return item.biome ? `Daily Moonstone Chest (${item.biome})` : 'Daily Moonstone Chest';
-  }
-}
 
 function to12HourTime(h: number): { hour: number; meridiem: 'AM' | 'PM' } {
   return {

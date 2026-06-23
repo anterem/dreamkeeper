@@ -234,10 +234,29 @@ fn resolve_display_names(
                 scan += 1;
                 if let Some(data) = read_bytes(bytes, &mut scan) {
                     if let Ok(key) = std::str::from_utf8(data) {
+                        // locbin key has two forms
+                        // "Fish!Bass" -> "Fish!Bass_DisplayName" - field 2
+                        //  "ActivityItem.Fish!Expansion01!Piranha_DisplayName" - field 3
                         if let Some(name) = loc_map.get(&format!("{key}_DisplayName")) {
                             names.insert(id as u32, name.clone());
                             pos = scan;
                             continue;
+                        }
+                        let mut f3 = scan;
+                        if bytes.get(f3) == Some(&0x1a) {
+                            f3 += 1;
+                            if let Some(full) = read_bytes(bytes, &mut f3) {
+                                if let Some(loc_key) = std::str::from_utf8(full)
+                                    .ok()
+                                    .and_then(|s| s.split_once('.'))
+                                {
+                                    if let Some(name) = loc_map.get(loc_key.1) {
+                                        names.insert(id as u32, name.clone());
+                                        pos = f3;
+                                        continue;
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -387,4 +406,3 @@ pub fn cached_item_names(
 pub fn get_display_names(storefront: Storefront) -> Result<HashMap<u32, String>, super::AppError> {
     Ok((*cached_item_names(&storefront)?).clone())
 }
-

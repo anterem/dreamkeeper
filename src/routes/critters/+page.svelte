@@ -21,21 +21,21 @@
   let prevDayName = $derived(WEEKDAY_NAMES[(activeDay + 6) % 7]);
   let nextDayName = $derived(WEEKDAY_NAMES[(activeDay + 1) % 7]);
 
-  const onlyReachable = new PersistedState('critters.reachable', false);
+  const onlyUnlocked = new PersistedState('critters.unlocked', false);
   const onlyAvailable = new PersistedState('critters.availableNow', false);
   const onlyToFeed = new PersistedState('critters.toFeed', false);
   const onlyUntamed = new PersistedState('critters.untamed', false);
 
   let dayCritters = $derived.by(() => {
     let list = critters.filter((c) => c.schedule[activeDay].length > 0);
-    if (onlyReachable.current) list = list.filter((c) => c.reachable);
+    if (onlyUnlocked.current) list = list.filter((c) => c.unlocked);
     if (isToday && onlyAvailable.current) list = list.filter((c) => c.availableNow);
     if (isToday && onlyToFeed.current) list = list.filter((c) => c.needsFeeding);
     if (onlyUntamed.current) list = list.filter((c) => !c.tamed);
     return list.toSorted(compareOnDay(activeDay));
   });
   let anyFilterActive = $derived(
-    onlyReachable.current ||
+    onlyUnlocked.current ||
       onlyUntamed.current ||
       (isToday && (onlyAvailable.current || onlyToFeed.current))
   );
@@ -93,9 +93,9 @@
     <div class="filters">
       <span class="filters-label">filter by:</span>
       <FilterToggle
-        label="reachable"
-        active={onlyReachable.current}
-        onclick={() => (onlyReachable.current = !onlyReachable.current)}
+        label="unlocked"
+        active={onlyUnlocked.current}
+        onclick={() => (onlyUnlocked.current = !onlyUnlocked.current)}
       />
       {#if isToday}
         <FilterToggle
@@ -138,7 +138,7 @@
               >{fed ? '✓' : available ? '●' : ''}</span
             >
             <span class="strong">
-              {critter.name}{#if critter.note}<abbr class="dagger" title={critter.note}>†</abbr
+              {critter.name}{#if critter.notes.length > 0}<abbr class="dagger" title={critter.notes.join(' · ')}>†</abbr
                 >{/if}
             </span>
             {#if critter.tamed}<span class="badge" title="tamed">♥</span>{/if}

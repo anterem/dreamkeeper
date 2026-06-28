@@ -21,10 +21,10 @@ function critter(overrides: Partial<Critter> = {}): Critter {
     name: 'Test Critter',
     species: 'squirrel',
     speciesRank: 0,
-    note: null,
+    notes: [],
     schedule: schedule({}),
     tamed: false,
-    reachable: true,
+    unlocked: true,
     lastFeedingSecs: null,
     ...overrides
   };

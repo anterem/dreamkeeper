@@ -29,10 +29,10 @@ export type Critter = {
 	species: string,
 	speciesRank: number,
 	biome: string,
-	note: string | null,
+	notes: string[],
 	schedule: Schedule[][],
 	tamed: boolean,
-	reachable: boolean,
+	unlocked: boolean,
 	lastFeedingSecs: number | null,
 };
 

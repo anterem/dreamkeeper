@@ -12,7 +12,7 @@
   let critters = $derived(
     section?.status === 'ok' ? section.data.map((c) => liveCritter(c, clock.nowSecs, tz)) : null
   );
-  let toFeed = $derived(critters ? critters.filter((c) => c.reachable && c.needsFeeding) : []);
+  let toFeed = $derived(critters ? critters.filter((c) => c.unlocked && c.needsFeeding) : []);
 </script>
 
 <Section

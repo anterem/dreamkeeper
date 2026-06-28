@@ -1,13 +1,11 @@
 <script lang="ts">
   import { snapshot } from '$lib/snapshot.svelte';
   import { clock } from '$lib/clock.svelte';
-  import { liveCritter, localWeekday } from '$lib/time';
-  import { formatSchedule } from '$lib/utils';
+  import { liveCritter } from '$lib/time';
   import Section from '$lib/components/Section.svelte';
 
   let section = $derived(snapshot.current?.critters ?? null);
   let tz = $derived(snapshot.current?.tzOffset ?? 0);
-  let weekday = $derived(localWeekday(clock.nowSecs, tz));
 
   let critters = $derived(
     section?.status === 'ok' ? section.data.map((c) => liveCritter(c, clock.nowSecs, tz)) : null
@@ -29,7 +27,7 @@
       {#each toFeed as critter}
         <li class="entry">
           <span class="strong">{critter.name}</span>
-          <span class="time">{formatSchedule(critter.schedule[weekday])}</span>
+          <span class="time">{critter.biome}</span>
         </li>
       {/each}
     </ul>

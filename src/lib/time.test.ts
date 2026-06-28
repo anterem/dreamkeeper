@@ -21,6 +21,7 @@ function critter(overrides: Partial<Critter> = {}): Critter {
     name: 'Test Critter',
     species: 'squirrel',
     speciesRank: 0,
+    biome: 'Peaceful Meadow',
     notes: [],
     schedule: schedule({}),
     tamed: false,

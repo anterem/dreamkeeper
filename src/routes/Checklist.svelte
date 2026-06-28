@@ -1,10 +1,10 @@
 <script lang="ts">
   import { snapshot } from '$lib/snapshot.svelte';
-  import { checklistLabel } from '$lib/checklist';
+  import { checklistLabel, liveChecklist } from '$lib/checklist';
   import Section from '$lib/components/Section.svelte';
 
   let section = $derived(snapshot.current?.checklist ?? null);
-  let items = $derived(section?.status === 'ok' ? section.data : null);
+  let items = $derived(section?.status === 'ok' ? liveChecklist(section.data) : null);
 </script>
 
 <Section title="Checklist">

@@ -19,7 +19,10 @@ export const events = {
 /* Types */
 export type AppError = ({ Io: string }) & { NotFound?: never; Parse?: never } | ({ Parse: string }) & { Io?: never; NotFound?: never } | ({ NotFound: string }) & { Io?: never; Parse?: never } | "NoSaveLoaded";
 
-export type ChecklistItem = { kind: "moonstoneChest"; biome: string | null } | { kind: "dreamSnapSubmission" } | { kind: "dreamSnapVoting" };
+export type ChecklistFacts = {
+	moonstoneChestBiomes: (string | null)[],
+	dreamSnaps: DreamSnaps | null,
+};
 
 export type CollectionStatus = "inVillage" | "inRealm" | "locked";
 
@@ -34,6 +37,11 @@ export type Critter = {
 	tamed: boolean,
 	unlocked: boolean,
 	lastFeedingSecs: number | null,
+};
+
+export type DreamSnaps = {
+	submitNeeded: boolean,
+	voteNeeded: boolean,
 };
 
 export type GiftCategory = "produce" | "meal" | "flower" | "fish" | "animalProduct" | "gem" | "material" | "other";
@@ -68,7 +76,7 @@ export type Snapshot = {
 	modifiedSecs: number,
 	critters: Section<Critter[]>,
 	villagers: Section<Villager[]>,
-	checklist: Section<ChecklistItem[]>,
+	checklist: Section<ChecklistFacts>,
 };
 
 export type Storefront = "steam" | "epic" | "microsoft";

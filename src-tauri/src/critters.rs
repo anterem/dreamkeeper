@@ -1,8 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::ops::Range;
-
-// tamed companions have different ids
-const WILD_CRITTER_ITEM_IDS: Range<u32> = 120_100_000..120_200_000;
 
 const SPARK_OF_IMAGINATION_MISSION: u64 = 2_070_001_037;
 
@@ -48,7 +44,7 @@ impl Note {
 }
 
 struct CritterDef {
-    name: &'static str,
+    id: u32,
     species: &'static str,
     biome: &'static str,
     days: [AvailableHours; 7],
@@ -62,455 +58,455 @@ const ALL: AvailableHours = hours(0, 24);
 
 static CRITTER_DATA: &[CritterDef] = &[
     CritterDef {
-        name: "Emerald Sunbird",
+        id: 120100025, // Emerald Sunbird
         species: "Sunbirds",
         biome: "Sunlit Plateau",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Golden Sunbird",
+        id: 120100026, // Golden Sunbird
         species: "Sunbirds",
         biome: "Sunlit Plateau",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Orchid Sunbird",
+        id: 120100027, // Orchid Sunbird
         species: "Sunbirds",
         biome: "Sunlit Plateau",
         days: [NA, NA, NA, NA, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Red Sunbird",
+        id: 120100005, // Red Sunbird
         species: "Sunbirds",
         biome: "Sunlit Plateau",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Turquoise Sunbird",
+        id: 120100024, // Turquoise Sunbird
         species: "Sunbirds",
         biome: "Sunlit Plateau",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Black Squirrel",
+        id: 120100010, // Black Squirrel
         species: "Squirrels",
         biome: "Plaza",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Squirrel",
+        id: 120100001, // Classic Squirrel
         species: "Squirrels",
         biome: "Plaza",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Gray Squirrel",
+        id: 120100009, // Gray Squirrel
         species: "Squirrels",
         biome: "Plaza",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Red Squirrel",
+        id: 120100008, // Red Squirrel
         species: "Squirrels",
         biome: "Plaza",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "White Squirrel",
+        id: 120100011, // White Squirrel
         species: "Squirrels",
         biome: "Plaza",
         days: [ALL, NA, NA, NA, NA, NA, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Blue Crocodile",
+        id: 120100028, // Blue Crocodile
         species: "Crocodiles",
         biome: "Glade of Trust",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Crocodile",
+        id: 120100007, // Classic Crocodile
         species: "Crocodiles",
         biome: "Glade of Trust",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Golden Crocodile",
+        id: 120100030, // Golden Crocodile
         species: "Crocodiles",
         biome: "Glade of Trust",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Pink Crocodile",
+        id: 120100040, // Pink Crocodile
         species: "Crocodiles",
         biome: "Glade of Trust",
         days: [NA, NA, NA, NA, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Red Crocodile",
+        id: 120100029, // Red Crocodile
         species: "Crocodiles",
         biome: "Glade of Trust",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "White Crocodile",
+        id: 120100031, // White Crocodile
         species: "Crocodiles",
         biome: "Glade of Trust",
         days: [ALL, NA, NA, NA, NA, NA, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Black Rabbit",
+        id: 120100012, // Black Rabbit
         species: "Rabbits",
         biome: "Peaceful Meadow",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Brown Rabbit",
+        id: 120100013, // Brown Rabbit
         species: "Rabbits",
         biome: "Peaceful Meadow",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Calico Rabbit",
+        id: 120100015, // Calico Rabbit
         species: "Rabbits",
         biome: "Peaceful Meadow",
         days: [NA, NA, NA, NA, ALL, NA, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Rabbit",
+        id: 120100000, // Classic Rabbit
         species: "Rabbits",
         biome: "Peaceful Meadow",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "White Rabbit",
+        id: 120100014, // White Rabbit
         species: "Rabbits",
         biome: "Peaceful Meadow",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Blue Raven",
+        id: 120100034, // Blue Raven
         species: "Ravens",
         biome: "Forgotten Lands",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Brown Raven",
+        id: 120100035, // Brown Raven
         species: "Ravens",
         biome: "Forgotten Lands",
         days: [NA, NA, ALL, NA, NA, NA, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Raven",
+        id: 120100004, // Classic Raven
         species: "Ravens",
         biome: "Forgotten Lands",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Red Raven",
+        id: 120100032, // Red Raven
         species: "Ravens",
         biome: "Forgotten Lands",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "White Raven",
+        id: 120100033, // White Raven
         species: "Ravens",
         biome: "Forgotten Lands",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Black Sea Turtle",
+        id: 120100019, // Black Sea Turtle
         species: "Sea Turtles",
         biome: "Dazzle Beach",
         days: [NA, ALL, NA, NA, NA, NA, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Brown Sea Turtle",
+        id: 120100016, // Brown Sea Turtle
         species: "Sea Turtles",
         biome: "Dazzle Beach",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Sea Turtle",
+        id: 120100002, // Classic Sea Turtle
         species: "Sea Turtles",
         biome: "Dazzle Beach",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Purple Sea Turtle",
+        id: 120100018, // Purple Sea Turtle
         species: "Sea Turtles",
         biome: "Dazzle Beach",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "White Sea Turtle",
+        id: 120100017, // White Sea Turtle
         species: "Sea Turtles",
         biome: "Dazzle Beach",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Black Fox",
+        id: 120100037, // Black Fox
         species: "Foxes",
         biome: "Frosted Heights",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Blue Fox",
+        id: 120100038, // Blue Fox
         species: "Foxes",
         biome: "Frosted Heights",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Fox",
+        id: 120100036, // Classic Fox
         species: "Foxes",
         biome: "Frosted Heights",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Red Fox",
+        id: 120100039, // Red Fox
         species: "Foxes",
         biome: "Frosted Heights",
         days: [NA, NA, NA, NA, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "White Fox",
+        id: 120100006, // White Fox
         species: "Foxes",
         biome: "Frosted Heights",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Black Raccoon",
+        id: 120100021, // Black Raccoon
         species: "Raccoons",
         biome: "Forest of Valor",
         days: [PM, NA, ALL, ALL, NA, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Blue Raccoon",
+        id: 120100023, // Blue Raccoon
         species: "Raccoons",
         biome: "Forest of Valor",
         days: [NA, NA, NA, ALL, NA, NA, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Classic Raccoon",
+        id: 120100003, // Classic Raccoon
         species: "Raccoons",
         biome: "Forest of Valor",
         days: [PM, ALL, NA, NA, ALL, NA, ALL],
         notes: &[],
     },
     CritterDef {
-        name: "Red Raccoon",
+        id: 120100020, // Red Raccoon
         species: "Raccoons",
         biome: "Forest of Valor",
         days: [AM, ALL, NA, ALL, NA, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "White Raccoon",
+        id: 120100022, // White Raccoon
         species: "Raccoons",
         biome: "Forest of Valor",
         days: [AM, NA, ALL, NA, ALL, ALL, NA],
         notes: &[],
     },
     CritterDef {
-        name: "Black and White Capybara",
+        id: 120100042, // Black and White Capybara
         species: "Capybaras",
         biome: "The Promenade",
         days: [PM, NA, ALL, NA, ALL, PM, PM],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Blue Striped Capybara",
+        id: 120100043, // Blue Striped Capybara
         species: "Capybaras",
         biome: "The Grove",
         days: [NA, AM, AM, AM, ALL, NA, ALL],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Classic Capybara",
+        id: 120100041, // Classic Capybara
         species: "Capybaras",
         biome: "The Grasslands",
         days: [ALL; 7],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Gray Spotted Capybara",
+        id: 120100044, // Gray Spotted Capybara
         species: "Capybaras",
         biome: "The Lagoon",
         days: [ALL, PM, PM, PM, NA, ALL, NA],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Red and White Striped Capybara",
+        id: 120100045, // Red and White Striped Capybara
         species: "Capybaras",
         biome: "The Lagoon",
         days: [NA, NA, NA, NA, NA, NA, ALL],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Toon Capybara",
+        id: 120100057, // Toon Capybara
         species: "Capybaras",
         biome: "The Grove",
         days: [ALL; 7],
         notes: &[Note::SparkOfImagination],
     },
     CritterDef {
-        name: "Blue and Red Striped Cobra",
+        id: 120100047, // Blue and Red Striped Cobra
         species: "Cobras",
         biome: "The Wastes",
         days: [ALL, PM, PM, NA, ALL, NA, PM],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Classic Cobra",
+        id: 120100046, // Classic Cobra
         species: "Cobras",
         biome: "The Plains",
         days: [ALL; 7],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Green and White Striped Cobra",
+        id: 120100050, // Green and White Striped Cobra
         species: "Cobras",
         biome: "The Borderlands",
         days: [NA, NA, NA, NA, ALL, NA, NA],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Pink Spotted Cobra",
+        id: 120100048, // Pink Spotted Cobra
         species: "Cobras",
         biome: "The Oasis",
         days: [AM, ALL, NA, AM, AM, ALL, NA],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Toon Cobra",
+        id: 120100056, // Toon Cobra
         species: "Cobras",
         biome: "The Wastes",
         days: [ALL; 7],
         notes: &[Note::SparkOfImagination],
     },
     CritterDef {
-        name: "Yellow and Purple Striped Cobra",
+        id: 120100049, // Yellow and Purple Striped Cobra
         species: "Cobras",
         biome: "The Borderlands",
         days: [PM, NA, ALL, PM, PM, NA, ALL],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Beige Monkey",
+        id: 120100054, // Beige Monkey
         species: "Monkeys",
         biome: "The Ruins",
         days: [ALL, PM, NA, PM, ALL, PM, NA],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Black and Brown Monkey",
+        id: 120100052, // Black and Brown Monkey
         species: "Monkeys",
         biome: "The Courtyard",
         days: [PM, NA, PM, ALL, PM, NA, ALL],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Black and Gray Monkey",
+        id: 120100055, // Black and Gray Monkey
         species: "Monkeys",
         biome: "The Ruins",
         days: [NA, NA, ALL, NA, NA, NA, NA],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Classic Monkey",
+        id: 120100051, // Classic Monkey
         species: "Monkeys",
         biome: "The Docks",
         days: [ALL; 7],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Red and Beige Monkey",
+        id: 120100053, // Red and Beige Monkey
         species: "Monkeys",
         biome: "The Overlook",
         days: [NA, AM, ALL, AM, NA, AM, ALL],
         notes: &[Note::AriftInTime],
     },
     CritterDef {
-        name: "Toon Monkey",
+        id: 120100058, // Toon Monkey
         species: "Monkeys",
         biome: "The Docks",
         days: [ALL; 7],
         notes: &[Note::SparkOfImagination],
     },
     CritterDef {
-        name: "Brown Owl",
+        id: 120100062, // Brown Owl
         species: "Owls",
         biome: "The Library of Lore",
         days: [NA, ALL, ALL, ALL, ALL, ALL, NA],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Dark Owl",
+        id: 120100072, // Dark Owl
         species: "Owls",
         biome: "The Library of Lore",
         days: [ALL, NA, NA, NA, NA, NA, ALL],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "White Owl",
+        id: 120100073, // White Owl
         species: "Owls",
         biome: "The Bind",
         days: [hours(15, 20); 7],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Purple Owl",
+        id: 120100063, // Purple Owl
         species: "Owls",
         biome: "The Bind",
         days: [hours(0, 9); 7],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Blue Baby Dragon",
+        id: 120100068, // Blue Baby Dragon
         species: "Baby Dragons",
         biome: "The Wild Woods",
         days: [NA, NA, ALL, ALL, ALL, ALL, NA],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Green Baby Dragon",
+        id: 120100070, // Green Baby Dragon
         species: "Baby Dragons",
         biome: "The Fallen Fortress",
         days: [
@@ -525,56 +521,56 @@ static CRITTER_DATA: &[CritterDef] = &[
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Purple Baby Dragon",
+        id: 120100071, // Purple Baby Dragon
         species: "Baby Dragons",
         biome: "The Beanstalk Marshes",
         days: [AM; 7],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Red Baby Dragon",
+        id: 120100069, // Red Baby Dragon
         species: "Baby Dragons",
         biome: "Teapot Falls",
         days: [ALL, NA, NA, NA, NA, NA, ALL],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Teal Baby Dragon",
+        id: 120100083, // Teal Baby Dragon
         species: "Baby Dragons",
         biome: "The Wild Woods",
         days: [ALL, NA, NA, ALL, ALL, ALL, ALL],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Black Pegasus",
+        id: 120100084, // Black Pegasus
         species: "Pegasi",
         biome: "The Elysian Fields",
         days: [ALL, NA, NA, ALL, ALL, ALL, ALL],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Blue Pegasus",
+        id: 120100065, // Blue Pegasus
         species: "Pegasi",
         biome: "The Fiery Plains",
         days: [NA, ALL, ALL, ALL, NA, NA, NA],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Peach Pegasus",
+        id: 120100067, // Peach Pegasus
         species: "Pegasi",
         biome: "Mount Olympus",
         days: [hours(6, 14); 7],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Pink Pegasus",
+        id: 120100064, // Pink Pegasus
         species: "Pegasi",
         biome: "The Elysian Fields",
         days: [ALL, NA, NA, NA, ALL, ALL, ALL],
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Yellow Pegasus",
+        id: 120100066, // Yellow Pegasus
         species: "Pegasi",
         biome: "The Statue's Shadow",
         days: [
@@ -589,91 +585,91 @@ static CRITTER_DATA: &[CritterDef] = &[
         notes: &[Note::StorybookVale],
     },
     CritterDef {
-        name: "Black Goose",
+        id: 120100080, // Black Goose
         species: "Geese",
         biome: "Silver Summit",
         days: [hours(5, 11); 7],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Blue Goose",
+        id: 120100096, // Blue Goose
         species: "Geese",
         biome: "Wishing Way",
         days: [hours(18, 20); 7],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Golden Goose",
+        id: 120100081, // Golden Goose
         species: "Geese",
         biome: "Delver Dale",
         days: [hours(7, 8) | hours(19, 20); 7],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Goose",
+        id: 120100078, // Goose
         species: "Geese",
         biome: "Wishblossom Ranch",
         days: [ALL, ALL, NA, ALL, NA, ALL, NA],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "True North Goose",
+        id: 120100079, // True North Goose
         species: "Geese",
         biome: "Ranch Highlands",
         days: [NA, NA, ALL, NA, ALL, NA, ALL],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Brown Skunk",
+        id: 120100086, // Brown Skunk
         species: "Skunks",
         biome: "Paisley Park",
         days: [PM, PM, NA, PM, NA, PM, NA],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Patterned Skunk",
+        id: 120100088, // Patterned Skunk
         species: "Skunks",
         biome: "Haute Plateau",
         days: [ALL; 7],
         notes: &[Note::WishblossomRanchRainyWeather],
     },
     CritterDef {
-        name: "Skunk",
+        id: 120100085, // Skunk
         species: "Skunks",
         biome: "Runway River",
         days: [AM; 7],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "White Skunk",
+        id: 120100087, // White Skunk
         species: "Skunks",
         biome: "Modish Marsh",
         days: [PM, NA, PM, NA, PM, NA, PM],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Blue Sweet Bee",
+        id: 120100094, // Blue Sweet Bee
         species: "Sweet Bees",
         biome: "Hunny Falls",
         days: [ALL; 7],
         notes: &[Note::WishblossomRanchClearWeather],
     },
     CritterDef {
-        name: "Pink Sweet Bee",
+        id: 120100093, // Pink Sweet Bee
         species: "Sweet Bees",
         biome: "Pixie Flats",
         days: [ALL; 7],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "Sweet Bee",
+        id: 120100092, // Sweet Bee
         species: "Sweet Bees",
         biome: "Sundae Shores",
         days: [hours(7, 20); 7],
         notes: &[Note::WishblossomRanch],
     },
     CritterDef {
-        name: "White Sweet Bee",
+        id: 120100095, // White Sweet Bee
         species: "Sweet Bees",
         biome: "Hundred-Acre Fields",
         days: [hours(20, 24); 7],
@@ -738,20 +734,14 @@ pub(crate) fn collect(loaded: &super::LoadedSave) -> Result<Vec<Critter>, super:
         .pointer("/World/QuestInfo/MissionsCompleted")
         .and_then(|v| v.as_array());
 
-    let name_to_id: HashMap<&str, u32> = name_map
-        .iter()
-        .filter(|&(id, _)| WILD_CRITTER_ITEM_IDS.contains(id))
-        .map(|(&id, name)| (name.as_str(), id))
-        .collect();
+    let companion_links = super::game_data::cached_companion_links(storefront)?;
 
-    let tamed_names: HashSet<&str> = save
+    let tamed_companions: HashSet<u32> = save
         .pointer("/Player/Pets")
         .and_then(|v| v.as_array())
         .map(|pets| {
             pets.iter()
-                .filter_map(|pet| pet.get("PetItemID")?.as_u64())
-                .filter_map(|id| name_map.get(&(id as u32)))
-                .map(String::as_str)
+                .filter_map(|pet| Some(pet.get("PetItemID")?.as_u64()? as u32))
                 .collect()
         })
         .unwrap_or_default();
@@ -777,8 +767,15 @@ pub(crate) fn collect(loaded: &super::LoadedSave) -> Result<Vec<Critter>, super:
 
     let critters = CRITTER_DATA
         .iter()
-        .filter_map(|entry| {
-            let &wild_id = name_to_id.get(entry.name)?;
+        .map(|entry| {
+            // companion name sometimes differs from wild critter name
+            let companion_id = companion_links.get(&entry.id).copied();
+            let name = companion_id
+                .and_then(|id| name_map.get(&id))
+                .or_else(|| name_map.get(&entry.id))
+                .cloned()
+                .unwrap_or_default();
+
             let biome_unlocked = unlocked_biomes
                 .as_ref()
                 .is_none_or(|unlocked| unlocked.contains(entry.biome));
@@ -795,18 +792,18 @@ pub(crate) fn collect(loaded: &super::LoadedSave) -> Result<Vec<Critter>, super:
             let unlocked = biome_unlocked && quest_unlocked;
             let schedule: Vec<Vec<Schedule>> =
                 entry.days.iter().map(|&day| day_schedule(day)).collect();
-            Some(Critter {
-                item_id: wild_id,
-                name: entry.name.to_string(),
+            Critter {
+                item_id: entry.id,
+                name,
                 species: entry.species.to_string(),
                 species_rank: species_rank(entry.species),
                 biome: entry.biome.to_string(),
                 notes: entry.notes.iter().map(|n| n.as_str().to_string()).collect(),
                 schedule,
-                tamed: tamed_names.contains(entry.name),
+                tamed: companion_id.is_some_and(|id| tamed_companions.contains(&id)),
                 unlocked,
-                last_feeding_secs: last_feeding_by_id.get(&wild_id).copied(),
-            })
+                last_feeding_secs: last_feeding_by_id.get(&entry.id).copied(),
+            }
         })
         .collect();
 
@@ -821,7 +818,7 @@ mod tests {
     fn every_critter_maps_to_a_known_biome() {
         let known = crate::areas::known_biome_names();
         for def in CRITTER_DATA {
-            assert!(known.contains(def.biome), "{} -> {}", def.name, def.biome);
+            assert!(known.contains(def.biome), "{} -> {}", def.id, def.biome);
         }
     }
 

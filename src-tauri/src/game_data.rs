@@ -269,6 +269,56 @@ fn resolve_display_names(
     names
 }
 
+fn resolve_companion_links(bytes: &[u8], wild_range: Range<u32>) -> HashMap<u32, u32> {
+    let mut links = HashMap::new();
+    let mut pos = 0;
+
+    while pos < bytes.len() {
+        if bytes[pos] != 0x08 {
+            pos += 1;
+            continue;
+        }
+        let mut scan = pos + 1;
+        if let Some(id) = read_varint(bytes, &mut scan) {
+            if wild_range.contains(&(id as u32)) && bytes.get(scan) == Some(&0x12) {
+                if let Some(companion) = read_companion_field(bytes, scan) {
+                    links.insert(id as u32, companion);
+                }
+            }
+        }
+        pos += 1;
+    }
+
+    links
+}
+
+// wild critter links to associated companion at field 23
+fn read_companion_field(bytes: &[u8], mut pos: usize) -> Option<u32> {
+    const COMPANION_RANGE: Range<u32> = 120_000_000..120_100_000;
+    while pos + 1 < bytes.len() {
+        if bytes[pos] == 0x08 {
+            let mut scan = pos + 1;
+            if let Some(next_id) = read_varint(bytes, &mut scan) {
+                if (120_000_000..120_300_000).contains(&(next_id as u32))
+                    && bytes.get(scan) == Some(&0x12)
+                {
+                    return None;
+                }
+            }
+        }
+        if bytes[pos] == 0xB8 && bytes.get(pos + 1) == Some(&0x01) {
+            let mut scan = pos + 2;
+            if let Some(companion) = read_varint(bytes, &mut scan) {
+                if COMPANION_RANGE.contains(&(companion as u32)) {
+                    return Some(companion as u32);
+                }
+            }
+        }
+        pos += 1;
+    }
+    None
+}
+
 fn parse_loc_map(bytes: &[u8]) -> HashMap<String, String> {
     let mut map = HashMap::new();
     let mut pos = 0;
@@ -398,6 +448,33 @@ pub fn cached_item_names(
     let names = Arc::new(load_item_names(storefront)?);
     *cache = Some((storefront.clone(), names.clone()));
     Ok(names)
+}
+
+fn load_companion_links(storefront: &Storefront) -> Result<HashMap<u32, u32>, super::AppError> {
+    let streaming_assets = find_streaming_assets(storefront)
+        .ok_or_else(|| super::AppError::NotFound("Could not locate game files".to_string()))?;
+    let item_bytes = read(streaming_assets.join("itemlist").join("Companion.json"))?;
+    Ok(resolve_companion_links(
+        &item_bytes,
+        120_100_000..120_200_000,
+    ))
+}
+
+static COMPANION_CACHE: Mutex<Option<(Storefront, Arc<HashMap<u32, u32>>)>> = Mutex::new(None);
+
+pub fn cached_companion_links(
+    storefront: &Storefront,
+) -> Result<Arc<HashMap<u32, u32>>, super::AppError> {
+    let mut cache = COMPANION_CACHE.lock().unwrap();
+    if let Some((cached_storefront, links)) = cache.as_ref() {
+        if cached_storefront == storefront {
+            return Ok(links.clone());
+        }
+    }
+
+    let links = Arc::new(load_companion_links(storefront)?);
+    *cache = Some((storefront.clone(), links.clone()));
+    Ok(links)
 }
 
 // display names for game ids: companions, characters, and items alike

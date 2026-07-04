@@ -73,6 +73,49 @@ static EXPANSION_BIOMES: &[(&str, &str)] = &[
     ("Wishland04", "Hundred-Acre Fields"),
 ];
 
+static BASE_AREA_TYPE_TOKENS: &[(&str, &str)] = &[
+    ("Beach", "BeachLevel"),
+    ("Meadow", "MeadowLevel"),
+    ("Forest", "ForestLevel"),
+    ("Wetland", "WetlandsLevel"),
+    ("Savannah", "SavannahLevel"),
+    ("Cliff", "SnowLevel"),
+    ("DarkMountains", "DarkLevel"),
+    ("Urban", "UrbanLevel"),
+];
+
+static EXPANSION_AREA_TYPE_TOKENS: &[(&str, &str)] = &[
+    ("AtlanteanOutpost", "OutpostArea"),
+    ("Desert", "DesertArea"),
+    ("Jungle", "JungleArea"),
+    ("Mythology", "MythologyArea"),
+    ("FairyTales", "FairyTalesArea"),
+    ("Library", "LibraryArea"),
+];
+
+pub(crate) fn biome_of_area_type(area_type: &str) -> Option<&'static str> {
+    let name = area_type.strip_prefix("VillageAreaType_")?;
+
+    let named = |table: &[(&'static str, &'static str)], token: &str| {
+        table
+            .iter()
+            .find(|&&(t, _)| t == token)
+            .map(|&(_, biome)| biome)
+    };
+
+    if let Some(&(_, token)) = BASE_AREA_TYPE_TOKENS.iter().find(|&&(t, _)| t == name) {
+        return named(BASE_BIOMES, token);
+    }
+
+    let number_at = name.find(|c: char| c.is_ascii_digit())?;
+    let (prefix, number) = name.split_at(number_at);
+    let token_prefix = EXPANSION_AREA_TYPE_TOKENS
+        .iter()
+        .find(|&&(t, _)| t == prefix)
+        .map_or(prefix, |&(_, token)| token);
+    named(EXPANSION_BIOMES, &format!("{token_prefix}{number}"))
+}
+
 pub(crate) fn biome_of(grid_path: &str) -> Option<&'static str> {
     let named = |table: &[(&'static str, &'static str)]| {
         table
@@ -129,4 +172,27 @@ fn biome_containing(
         .filter_map(|id| grids.get(&id.as_u64()?.to_string()))
         .filter_map(|grid| grid.get("GridDataPath")?.as_str())
         .find_map(biome_of)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::biome_of_area_type;
+
+    #[test]
+    fn every_area_type_maps_to_a_biome() {
+        for (name, biome) in [
+            ("VillageAreaType_Beach", "Dazzle Beach"),
+            ("VillageAreaType_Cliff", "Frosted Heights"),
+            ("VillageAreaType_DarkMountains", "Forgotten Lands"),
+            ("VillageAreaType_Wetland", "Glade of Trust"),
+            ("VillageAreaType_AtlanteanOutpost01", "The Docks"),
+            ("VillageAreaType_Desert02", "The Oasis"),
+            ("VillageAreaType_Jungle04", "The Lagoon"),
+            ("VillageAreaType_FairyTales03", "Teapot Falls"),
+            ("VillageAreaType_Rockies03", "Silver Summit"),
+            ("VillageAreaType_Wishland04", "Hundred-Acre Fields"),
+        ] {
+            assert_eq!(biome_of_area_type(name), Some(biome), "{name}");
+        }
+    }
 }

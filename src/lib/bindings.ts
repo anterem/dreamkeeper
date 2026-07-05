@@ -56,7 +56,7 @@ export type PreferredGift = {
 	gifted: boolean,
 };
 
-export type Role = "gardening" | "fishing" | "mining" | "foraging" | "digging";
+export type Role = "gardening" | "fishing" | "mining" | "foraging" | "digging" | "timebending" | "snippetCatching";
 
 export type SaveChanged = Snapshot;
 

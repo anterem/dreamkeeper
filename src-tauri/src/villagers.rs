@@ -89,6 +89,8 @@ pub enum Role {
     Mining,
     Foraging,
     Digging,
+    Timebending,
+    SnippetCatching,
 }
 
 fn role_from_profession_id(id: u64) -> Option<Role> {
@@ -98,6 +100,8 @@ fn role_from_profession_id(id: u64) -> Option<Role> {
         1_500_000_003 => Some(Role::Mining),
         1_500_000_004 => Some(Role::Foraging),
         1_500_000_005 => Some(Role::Digging),
+        1_500_000_006 => Some(Role::Timebending),
+        1_500_000_007 => Some(Role::SnippetCatching),
         _ => None,
     }
 }

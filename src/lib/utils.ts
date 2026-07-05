@@ -5,14 +5,24 @@ const ROLE_LABELS: Record<Role, string> = {
   fishing: 'Fishing',
   mining: 'Mining',
   foraging: 'Foraging',
-  digging: 'Digging'
+  digging: 'Digging',
+  timebending: 'Timebending',
+  snippetCatching: 'Snippet Catching'
 };
 
 export function roleLabel(role: Role | null): string {
   return role ? ROLE_LABELS[role] : '';
 }
 
-export const ROLES: Role[] = ['gardening', 'fishing', 'mining', 'foraging', 'digging'];
+export const ROLES: Role[] = [
+  'gardening',
+  'fishing',
+  'mining',
+  'foraging',
+  'digging',
+  'timebending',
+  'snippetCatching'
+];
 
 function to12HourTime(h: number): { hour: number; meridiem: 'AM' | 'PM' } {
   return {

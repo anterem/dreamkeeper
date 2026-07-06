@@ -34,9 +34,9 @@ static EXPANSION_BIOMES: &[(&str, &str)] = &[
     ("OutpostArea04", "The Ruins"),
     // Eternity Isle — Glittering Dunes
     ("DesertArea01", "The Plains"),
-    ("DesertArea02", "The Oasis"),
-    ("DesertArea03", "The Borderlands"),
-    ("DesertArea04", "The Wastes"),
+    ("DesertArea02", "The Wastes"),
+    ("DesertArea03", "The Oasis"),
+    ("DesertArea04", "The Borderlands"),
     // Eternity Isle — Wild Tangle
     ("JungleArea01", "The Grasslands"),
     ("JungleArea02", "The Promenade"),
@@ -186,7 +186,8 @@ mod tests {
             ("VillageAreaType_DarkMountains", "Forgotten Lands"),
             ("VillageAreaType_Wetland", "Glade of Trust"),
             ("VillageAreaType_AtlanteanOutpost01", "The Docks"),
-            ("VillageAreaType_Desert02", "The Oasis"),
+            ("VillageAreaType_Desert02", "The Wastes"),
+            ("VillageAreaType_Desert03", "The Oasis"),
             ("VillageAreaType_Jungle04", "The Lagoon"),
             ("VillageAreaType_FairyTales03", "Teapot Falls"),
             ("VillageAreaType_Rockies03", "Silver Summit"),

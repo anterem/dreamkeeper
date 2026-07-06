@@ -1,19 +1,13 @@
 <script lang="ts">
   import { snapshot } from '$lib/snapshot.svelte';
   import { clock } from '$lib/clock.svelte';
-  import { liveCritter, localWeekday, type LiveCritter } from '$lib/time';
+  import { critters } from '$lib/live.svelte';
+  import { localWeekday, type LiveCritter } from '$lib/time';
   import { WEEKDAY_NAMES, formatSchedule } from '$lib/utils';
   import { PersistedState } from '$lib/persisted.svelte';
   import FilterToggle from '$lib/components/FilterToggle.svelte';
 
-  let section = $derived(snapshot.current?.critters ?? null);
   let tz = $derived(snapshot.current?.tzOffset ?? 0);
-  let loading = $derived(snapshot.current === null);
-  let error = $derived(section?.status === 'error' ? section.error : '');
-  let critters = $derived(
-    section?.status === 'ok' ? section.data.map((c) => liveCritter(c, clock.nowSecs, tz)) : []
-  );
-
   let todayIndex = $derived(localWeekday(clock.nowSecs, tz));
   let selectedDay = $state<number | null>(null);
   let activeDay = $derived(selectedDay ?? todayIndex);
@@ -27,7 +21,7 @@
   const onlyUntamed = new PersistedState('critters.untamed', false);
 
   let dayCritters = $derived.by(() => {
-    let list = critters.filter((c) => c.schedule[activeDay].length > 0);
+    let list = critters.data.filter((c) => c.schedule[activeDay].length > 0);
     if (onlyUnlocked.current) list = list.filter((c) => c.unlocked);
     if (isToday && onlyAvailable.current) list = list.filter((c) => c.availableNow);
     if (isToday && onlyToFeed.current) list = list.filter((c) => c.needsFeeding);
@@ -62,11 +56,11 @@
 </script>
 
 <main>
-  {#if loading}
+  {#if critters.loading}
     <p class="status"><em>Reading your save…</em></p>
-  {:else if error}
-    <p class="status">Something went amiss: <span class="error">{error}</span></p>
-  {:else if critters.length === 0}
+  {:else if critters.error}
+    <p class="status">Something went amiss: <span class="error">{critters.error}</span></p>
+  {:else if critters.data.length === 0}
     <p class="status">
       <em>No critter data found.</em><br />
       Make sure the game files are installed and a save is loaded.
@@ -225,13 +219,6 @@
     color: var(--color-primary-hover);
   }
 
-  .ledger {
-    list-style: none;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-  }
-
   .entry {
     display: flex;
     align-items: baseline;
@@ -258,12 +245,6 @@
     text-decoration: none;
     cursor: help;
     margin-left: 0.15em;
-  }
-
-  .leader {
-    flex: 1;
-    min-width: var(--space-4);
-    border-bottom: 1px dotted var(--color-rule);
   }
 
   .time {

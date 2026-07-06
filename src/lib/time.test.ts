@@ -190,6 +190,18 @@ describe('villager gifting', () => {
     expect(giftableAt(now, tz, cutoff)).toBe(false);
   });
 
+  it('needs gifting while an ungifted favorite remains today', () => {
+    const needsGifting = (v: Partial<Villager>) => liveVillager(villager(v), 6 * H, 0).needsGifting;
+
+    expect(needsGifting({ gifts: [gift()] })).toBe(true);
+    expect(needsGifting({ gifts: [] })).toBe(false);
+    expect(needsGifting({ status: 'locked', gifts: [gift()] })).toBe(false);
+    expect(
+      needsGifting({ lastGiftSecs: 6 * H, gifts: [gift({ gifted: true }), gift({ gifted: false })] })
+    ).toBe(true);
+    expect(needsGifting({ lastGiftSecs: 6 * H, gifts: [gift({ gifted: true })] })).toBe(false);
+  });
+
   it('marks a gift given only after the reset has passed', () => {
     const recent = liveVillager(
       villager({ lastGiftSecs: 6 * H, gifts: [gift({ gifted: true }), gift({ gifted: false })] }),

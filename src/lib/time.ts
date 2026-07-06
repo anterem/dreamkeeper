@@ -19,8 +19,7 @@ function localHour(nowSecs: number, tzOffset: number): number {
 }
 
 function localMidnight(nowSecs: number, tzOffset: number): number {
-  const local = localSecs(nowSecs, tzOffset);
-  return local - (((local % DAY) + DAY) % DAY);
+  return Math.floor(localSecs(nowSecs, tzOffset) / DAY) * DAY;
 }
 
 // gifts reset at 5am local
@@ -57,14 +56,20 @@ export function liveCritter(critter: Critter, nowSecs: number, tzOffset: number)
 }
 
 export type LiveGift = PreferredGift & { giftedToday: boolean };
-export type LiveVillager = Omit<Villager, 'gifts'> & { giftableToday: boolean; gifts: LiveGift[] };
+export type LiveVillager = Omit<Villager, 'gifts'> & {
+  giftableToday: boolean;
+  needsGifting: boolean;
+  gifts: LiveGift[];
+};
 
 export function liveVillager(villager: Villager, nowSecs: number, tzOffset: number): LiveVillager {
   const giftableToday =
     villager.lastGiftSecs === null || villager.lastGiftSecs < last5amUtc(nowSecs, tzOffset);
+  const gifts = villager.gifts.map((g) => ({ ...g, giftedToday: !giftableToday && g.gifted }));
   return {
     ...villager,
     giftableToday,
-    gifts: villager.gifts.map((g) => ({ ...g, giftedToday: !giftableToday && g.gifted }))
+    gifts,
+    needsGifting: villager.status === 'inVillage' && gifts.some((g) => !g.giftedToday)
   };
 }

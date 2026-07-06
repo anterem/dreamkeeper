@@ -14,15 +14,7 @@ export function roleLabel(role: Role | null): string {
   return role ? ROLE_LABELS[role] : '';
 }
 
-export const ROLES: Role[] = [
-  'gardening',
-  'fishing',
-  'mining',
-  'foraging',
-  'digging',
-  'timebending',
-  'snippetCatching'
-];
+export const ROLES = Object.keys(ROLE_LABELS) as Role[];
 
 function to12HourTime(h: number): { hour: number; meridiem: 'AM' | 'PM' } {
   return {
@@ -48,11 +40,6 @@ export function formatSchedule(daySchedule: Schedule[]): string {
     if (start === 12 && end === 24) return 'Afternoon';
   }
   return daySchedule.map(formatHourRange).join(', ');
-}
-
-export function formatFriendship(level: number, xp: number): string {
-  if (level >= 10) return 'Lv 10';
-  return `Lv ${level} · ${xp.toLocaleString()} XP`;
 }
 
 export const WEEKDAY_NAMES = [

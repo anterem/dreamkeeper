@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use serde_json::Value;
+use serde::Deserialize;
 
 use super::{AppError, LoadedSave};
 
@@ -165,96 +165,99 @@ pub struct Villager {
     pub last_gift_secs: Option<i64>,
 }
 
-fn status_of(entry: Option<&Value>) -> CollectionStatus {
-    match entry.and_then(|c| c.get("Status")).and_then(|s| s.as_str()) {
-        Some("CharacterStatus_InVillage") => CollectionStatus::InVillage,
-        Some("CharacterStatus_InRealm") => CollectionStatus::InRealm,
-        _ => CollectionStatus::Locked,
+#[derive(Default, Deserialize)]
+#[serde(default, rename_all = "PascalCase")]
+struct SavedCharacter {
+    base: SavedBase,
+    status: String,
+    friendship_level: u8,
+    #[serde(rename = "Friendship")]
+    friendship_xp: u32,
+    #[serde(rename = "ProfessionID")]
+    profession_id: u64,
+    last_gift_date: Option<String>,
+    preferred_item_slots: Vec<SavedGiftSlot>,
+    preferred_item_status: HashMap<String, String>,
+}
+
+#[derive(Default, Deserialize)]
+struct SavedBase {
+    id: u32,
+}
+
+#[derive(Default, Deserialize)]
+#[serde(default, rename_all = "PascalCase")]
+struct SavedGiftSlot {
+    preferred_item_id: u32,
+    gifted: bool,
+}
+
+impl SavedCharacter {
+    fn status(&self) -> CollectionStatus {
+        match self.status.as_str() {
+            "CharacterStatus_InVillage" => CollectionStatus::InVillage,
+            "CharacterStatus_InRealm" => CollectionStatus::InRealm,
+            _ => CollectionStatus::Locked,
+        }
+    }
+
+    fn last_gift_secs(&self) -> Option<i64> {
+        let date = self.last_gift_date.as_deref()?;
+        Some(chrono::DateTime::parse_from_rfc3339(date).ok()?.timestamp())
+    }
+
+    fn gifts(&self, names: &HashMap<u32, String>) -> Vec<PreferredGift> {
+        self.preferred_item_slots
+            .iter()
+            .map(|slot| {
+                let item_id = slot.preferred_item_id;
+                let discovered = self
+                    .preferred_item_status
+                    .get(&item_id.to_string())
+                    .is_some_and(|s| s == "PreferredItemStatus_Discovered");
+                PreferredGift {
+                    item_id,
+                    name: names.get(&item_id).cloned().unwrap_or_default(),
+                    category: gift_category(item_id),
+                    discovered,
+                    gifted: slot.gifted,
+                }
+            })
+            .collect()
     }
 }
 
 pub(crate) fn collect(loaded: &LoadedSave) -> Result<Vec<Villager>, AppError> {
-    let save = &loaded.contents;
-    let storefront = &loaded.storefront;
+    let names = super::game_data::cached_item_names(&loaded.storefront)?;
 
-    let names = super::game_data::cached_item_names(storefront)?;
-
-    let by_id: HashMap<u32, &Value> = save
+    let by_id: HashMap<u32, SavedCharacter> = loaded
+        .contents
         .pointer("/World/Characters")
         .and_then(|v| v.as_array())
         .map(|chars| {
             chars
                 .iter()
-                .filter_map(|c| Some((c.pointer("/Base/id")?.as_u64()? as u32, c)))
+                .filter_map(|c| SavedCharacter::deserialize(c).ok())
+                .map(|c| (c.base.id, c))
                 .collect()
         })
         .unwrap_or_default();
 
+    let locked = SavedCharacter::default();
     let villagers = VILLAGER_ROSTER
         .iter()
         .map(|&id| {
-            let name = names.get(&id).cloned().unwrap_or_default();
-            let entry = by_id.get(&id).copied();
-            let status = status_of(entry);
-
-            let friendship_level = entry
-                .and_then(|e| e.get("FriendshipLevel"))
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0) as u8;
-            let friendship_xp = entry
-                .and_then(|e| e.get("Friendship"))
-                .and_then(|v| v.as_u64())
-                .unwrap_or(0) as u32;
-            let role = entry
-                .and_then(|e| e.get("ProfessionID"))
-                .and_then(|v| v.as_u64())
-                .and_then(role_from_profession_id);
-
-            let last_gift_secs = entry
-                .and_then(|e| e.get("LastGiftDate"))
-                .and_then(|v| v.as_str())
-                .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                .map(|dt| dt.timestamp());
-
-            let discovered = entry
-                .and_then(|e| e.get("PreferredItemStatus"))
-                .and_then(|v| v.as_object());
-            let gifts = entry
-                .and_then(|e| e.get("PreferredItemSlots"))
-                .and_then(|v| v.as_array())
-                .map(|slots| {
-                    slots
-                        .iter()
-                        .filter_map(|slot| {
-                            let item_id = slot.get("PreferredItemId")?.as_u64()? as u32;
-                            let gifted =
-                                slot.get("Gifted").and_then(|v| v.as_bool()).unwrap_or(false);
-                            let discovered = discovered
-                                .and_then(|d| d.get(&item_id.to_string()))
-                                .and_then(|s| s.as_str())
-                                == Some("PreferredItemStatus_Discovered");
-                            Some(PreferredGift {
-                                item_id,
-                                name: names.get(&item_id).cloned().unwrap_or_default(),
-                                category: gift_category(item_id),
-                                discovered,
-                                gifted,
-                            })
-                        })
-                        .collect()
-                })
-                .unwrap_or_default();
-
+            let saved = by_id.get(&id).unwrap_or(&locked);
             Villager {
                 id,
-                name,
-                status,
-                role,
-                friendship_level,
-                friendship_xp,
-                is_maxed: friendship_level == 10,
-                gifts,
-                last_gift_secs,
+                name: names.get(&id).cloned().unwrap_or_default(),
+                status: saved.status(),
+                role: role_from_profession_id(saved.profession_id),
+                friendship_level: saved.friendship_level,
+                friendship_xp: saved.friendship_xp,
+                is_maxed: saved.friendship_level == 10,
+                gifts: saved.gifts(&names),
+                last_gift_secs: saved.last_gift_secs(),
             }
         })
         .collect();

@@ -52,8 +52,8 @@ static EXPANSION_BIOMES: &[(&str, &str)] = &[
     ("MythologyArea04", "Mount Olympus"),
     // Storybook Vale — Everafter
     ("FairyTalesArea01", "The Wild Woods"),
-    ("FairyTalesArea02", "The Fallen Fortress"),
-    ("FairyTalesArea03", "Teapot Falls"),
+    ("FairyTalesArea02", "Teapot Falls"),
+    ("FairyTalesArea03", "The Fallen Fortress"),
     ("FairyTalesArea04", "The Beanstalk Marshes"),
     // Wishblossom — Wishing Alps
     ("Rockies01", "Wishblossom Ranch"),
@@ -189,7 +189,8 @@ mod tests {
             ("VillageAreaType_Desert02", "The Wastes"),
             ("VillageAreaType_Desert03", "The Oasis"),
             ("VillageAreaType_Jungle04", "The Lagoon"),
-            ("VillageAreaType_FairyTales03", "Teapot Falls"),
+            ("VillageAreaType_FairyTales02", "Teapot Falls"),
+            ("VillageAreaType_FairyTales03", "The Fallen Fortress"),
             ("VillageAreaType_Rockies03", "Silver Summit"),
             ("VillageAreaType_Wishland04", "Hundred-Acre Fields"),
         ] {

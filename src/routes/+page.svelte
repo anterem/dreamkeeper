@@ -21,6 +21,5 @@
   main {
     max-width: 44rem;
     margin-inline: auto;
-    container-type: inline-size;
   }
 </style>

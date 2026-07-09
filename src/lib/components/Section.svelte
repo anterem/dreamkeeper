@@ -22,7 +22,7 @@
 
 <style>
   section {
-    width: fit-content;
+    width: min(100%, var(--reading-width));
     margin-inline: auto;
     margin-bottom: var(--space-7);
   }

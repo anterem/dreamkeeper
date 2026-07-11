@@ -22,7 +22,6 @@ export type AppError = ({ Io: string }) & { NotFound?: never; Parse?: never } | 
 export type ChecklistFacts = {
 	moonstoneChestBiomes: (string | null)[],
 	riftBiomes: (string | null)[],
-	upcomingRifts: UpcomingRift[],
 	dreamSnaps: DreamSnaps | null,
 };
 
@@ -82,11 +81,6 @@ export type Snapshot = {
 };
 
 export type Storefront = "steam" | "epic" | "microsoft";
-
-export type UpcomingRift = {
-	biome: string | null,
-	spawnSecs: number,
-};
 
 export type Villager = {
 	id: number,

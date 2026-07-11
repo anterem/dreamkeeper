@@ -57,16 +57,6 @@ const rtf = new Intl.RelativeTimeFormat(
   { numeric: 'auto' }
 );
 
-export function formatDuration(seconds: number): string {
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 1) return 'under a minute';
-  if (minutes < 60) return minutes === 1 ? '1 minute' : `${minutes} minutes`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return hours === 1 ? '1 hour' : `${hours} hours`;
-  const days = Math.round(hours / 24);
-  return days === 1 ? '1 day' : `${days} days`;
-}
-
 export function formatRelativeTime(unixSeconds: number): string {
   if (!Number.isFinite(unixSeconds)) return 'unknown';
 

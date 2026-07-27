@@ -12,9 +12,7 @@
 >
   {#if critters.error}
     <p class="muted">Couldn't read critters: <span class="error">{critters.error}</span></p>
-  {:else if toFeed.length === 0}
-    <p class="muted"><em>All fed for today.</em></p>
-  {:else}
+  {:else if toFeed.length > 0}
     <ul class="columns">
       {#each toFeed as critter}
         <li class="entry">

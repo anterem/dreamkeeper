@@ -13,9 +13,7 @@
 >
   {#if villagers.error}
     <p class="muted">Couldn't read villagers: <span class="error">{villagers.error}</span></p>
-  {:else if toLevel.length === 0}
-    <p class="muted"><em>All gifted for today.</em></p>
-  {:else}
+  {:else if toLevel.length > 0}
     <ul class="columns">
       {#each toLevel as villager}
         <li>

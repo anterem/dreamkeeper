@@ -10,9 +10,7 @@
 <Section title="Checklist">
   {#if section?.status === 'error'}
     <p class="muted">Couldn't read checklist: <span class="error">{section.error}</span></p>
-  {:else if items && items.length === 0}
-    <p class="muted"><em>All clear.</em></p>
-  {:else if items}
+  {:else if items && items.length > 0}
     <ul class="checklist">
       {#each items as item}
         <li class="entry"><span class="strong">{checklistLabel(item)}</span></li>

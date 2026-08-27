@@ -17,6 +17,7 @@ enum Note {
     WishblossomRanch,
     WishblossomRanchClearWeather,
     WishblossomRanchRainyWeather,
+    HoneyglowWoods,
 }
 
 impl Note {
@@ -32,6 +33,7 @@ impl Note {
             Note::WishblossomRanchRainyWeather => {
                 "Only during heavy clouds or rainy weather (Wishblossom Ranch)"
             }
+            Note::HoneyglowWoods => "Requires Honeyglow Woods expansion",
         }
     }
 
@@ -674,6 +676,34 @@ static CRITTER_DATA: &[CritterDef] = &[
         biome: "Hundred-Acre Fields",
         days: [hours(20, 24); 7],
         notes: &[Note::WishblossomRanch],
+    },
+    CritterDef {
+        id: 120100108, // Classic Hedgehog
+        species: "Hedgehogs",
+        biome: "Drowsybloom Acre",
+        days: [ALL; 7],
+        notes: &[Note::HoneyglowWoods],
+    },
+    CritterDef {
+        id: 120100110, // Green Hedgehog
+        species: "Hedgehogs",
+        biome: "Gloommeadow",
+        days: [AM; 7],
+        notes: &[Note::HoneyglowWoods],
+    },
+    CritterDef {
+        id: 120100111, // Orange Hedgehog
+        species: "Hedgehogs",
+        biome: "Nectar Apiary",
+        days: [PM, NA, NA, PM, NA, NA, PM],
+        notes: &[Note::HoneyglowWoods],
+    },
+    CritterDef {
+        id: 120100109, // Yellow Hedgehog
+        species: "Hedgehogs",
+        biome: "Braveheart Grove",
+        days: [PM; 7],
+        notes: &[Note::HoneyglowWoods],
     },
 ];
 

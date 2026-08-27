@@ -25,7 +25,7 @@ static EXPANSION_REGIONS: &[(&str, &str)] = &[
     ("Wishland", "Pixie Acres"),
 ];
 
-// to be confirmed
+// menu.locbin label_village_area_*
 static EXPANSION_BIOMES: &[(&str, &str)] = &[
     // Eternity Isle — Ancient's Landing
     ("OutpostArea01", "The Docks"),
@@ -71,6 +71,11 @@ static EXPANSION_BIOMES: &[(&str, &str)] = &[
     ("Wishland02", "Pixie Flats"),
     ("Wishland03", "Hunny Falls"),
     ("Wishland04", "Hundred-Acre Fields"),
+    // Honeyglow Woods
+    ("Honeywood01", "Drowsybloom Acre"),
+    ("Honeywood02", "Gloommeadow"),
+    ("Honeywood03", "Braveheart Grove"),
+    ("Honeywood04", "Nectar Apiary"),
 ];
 
 pub(crate) fn biome_of(grid_path: &str) -> Option<&'static str> {

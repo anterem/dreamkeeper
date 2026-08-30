@@ -1,4 +1,5 @@
 use cipher::{BlockModeDecrypt, KeyInit, block_padding::Pkcs7};
+#[cfg(windows)]
 use known_folders::{KnownFolder, get_known_folder_path};
 use notify_debouncer_full::{
     DebounceEventResult, Debouncer, RecommendedCache, new_debouncer,
@@ -206,11 +207,28 @@ fn load_save_file(
     Ok(())
 }
 
-fn get_game_folder() -> PathBuf {
-    get_known_folder_path(KnownFolder::LocalAppDataLow)
-        .expect("LocalAppDataLow exists on Windows")
-        .join("Gameloft")
-        .join("Disney Dreamlight Valley")
+#[cfg(windows)]
+fn get_game_folder() -> Option<PathBuf> {
+    Some(
+        get_known_folder_path(KnownFolder::LocalAppDataLow)
+            .expect("LocalAppDataLow exists on Windows")
+            .join("Gameloft")
+            .join("Disney Dreamlight Valley"),
+    )
+}
+
+// on linux (steam deck) the game runs in a proton prefix
+#[cfg(not(windows))]
+fn get_game_folder() -> Option<PathBuf> {
+    game_data::steam_libraries()
+        .into_iter()
+        .map(|lib| {
+            lib.join(format!(
+                "steamapps/compatdata/{}/pfx/drive_c/users/steamuser/AppData/LocalLow/Gameloft/Disney Dreamlight Valley",
+                game_data::STEAM_APP_ID
+            ))
+        })
+        .find(|p| p.exists())
 }
 
 pub(crate) fn get_modified_secs(path: &Path) -> Option<u32> {
@@ -223,7 +241,9 @@ pub(crate) fn get_modified_secs(path: &Path) -> Option<u32> {
 #[tauri::command]
 #[specta::specta]
 fn get_save_files() -> Result<Vec<SaveFile>, AppError> {
-    let game_path = get_game_folder();
+    let Some(game_path) = get_game_folder() else {
+        return Ok(vec![]);
+    };
 
     let entries = match std::fs::read_dir(&game_path) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(vec![]),

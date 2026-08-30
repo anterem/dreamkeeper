@@ -6,8 +6,12 @@ use std::{
     path::PathBuf,
     sync::{Arc, Mutex},
 };
+#[cfg(windows)]
 use winreg::{RegKey, enums};
 use zip::ZipArchive;
+
+#[cfg(not(windows))]
+pub(crate) const STEAM_APP_ID: u32 = 1401590;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
@@ -80,7 +84,8 @@ fn parse_acf_field(content: &str, field: &str) -> Option<String> {
         })
 }
 
-fn find_steam_streaming_assets() -> Option<PathBuf> {
+#[cfg(windows)]
+fn steam_install_dir() -> Option<PathBuf> {
     let hkcu = RegKey::predef(enums::HKEY_CURRENT_USER);
     let steam_key = hkcu.open_subkey(r"Software\Valve\Steam").ok().or_else(|| {
         RegKey::predef(enums::HKEY_LOCAL_MACHINE)
@@ -88,15 +93,41 @@ fn find_steam_streaming_assets() -> Option<PathBuf> {
             .ok()
     })?;
     let steam_path: String = steam_key.get_value("SteamPath").ok()?;
+    Some(PathBuf::from(steam_path))
+}
 
-    let vdf_path = PathBuf::from(&steam_path)
-        .join("config")
-        .join("libraryfolders.vdf");
-    let vdf_content = std::fs::read_to_string(&vdf_path).ok()?;
-    let libraries = parse_vdf_paths(&vdf_content);
+// steam deck
+#[cfg(not(windows))]
+fn steam_install_dir() -> Option<PathBuf> {
+    let home = PathBuf::from(std::env::var_os("HOME")?);
+    [
+        home.join(".steam/steam"),
+        home.join(".local/share/Steam"),
+        home.join(".var/app/com.valvesoftware.Steam/.local/share/Steam"),
+    ]
+    .into_iter()
+    .find(|p| p.exists())
+}
 
-    for library in &libraries {
-        let apps_dir = PathBuf::from(library).join("steamapps");
+pub(crate) fn steam_libraries() -> Vec<PathBuf> {
+    let Some(steam_dir) = steam_install_dir() else {
+        return vec![];
+    };
+    let vdf_content =
+        std::fs::read_to_string(steam_dir.join("config/libraryfolders.vdf")).unwrap_or_default();
+    let mut libraries: Vec<PathBuf> = parse_vdf_paths(&vdf_content)
+        .into_iter()
+        .map(PathBuf::from)
+        .collect();
+    if !libraries.contains(&steam_dir) {
+        libraries.insert(0, steam_dir);
+    }
+    libraries
+}
+
+fn find_steam_streaming_assets() -> Option<PathBuf> {
+    for library in steam_libraries() {
+        let apps_dir = library.join("steamapps");
         let Ok(entries) = std::fs::read_dir(&apps_dir) else {
             continue;
         };
@@ -117,8 +148,7 @@ fn find_steam_streaming_assets() -> Option<PathBuf> {
                 let Some(installdir) = parse_acf_field(&content, "installdir") else {
                     continue;
                 };
-                let streaming_assets = PathBuf::from(library)
-                    .join("steamapps")
+                let streaming_assets = apps_dir
                     .join("common")
                     .join(&installdir)
                     .join("ddv_Data")
@@ -133,6 +163,7 @@ fn find_steam_streaming_assets() -> Option<PathBuf> {
     None
 }
 
+#[cfg(windows)]
 fn find_epic_streaming_assets() -> Option<PathBuf> {
     let programdata = std::env::var("PROGRAMDATA").ok()?;
     let manifests_dir = PathBuf::from(&programdata)
@@ -174,6 +205,7 @@ fn find_epic_streaming_assets() -> Option<PathBuf> {
     None
 }
 
+#[cfg(windows)]
 fn find_ms_streaming_assets() -> Option<PathBuf> {
     let hklm = RegKey::predef(enums::HKEY_LOCAL_MACHINE);
     let package_key = hklm
@@ -206,8 +238,12 @@ fn find_ms_streaming_assets() -> Option<PathBuf> {
 fn find_streaming_assets(storefront: &Storefront) -> Option<PathBuf> {
     match storefront {
         Storefront::Steam => find_steam_streaming_assets(),
+        #[cfg(windows)]
         Storefront::Epic => find_epic_streaming_assets(),
+        #[cfg(windows)]
         Storefront::Microsoft => find_ms_streaming_assets(),
+        #[cfg(not(windows))]
+        _ => None,
     }
 }
 

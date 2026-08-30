@@ -4,7 +4,8 @@ export type ChecklistItem =
   | { kind: 'moonstoneChest'; biome: string | null }
   | { kind: 'rift'; biome: string | null }
   | { kind: 'dreamSnapSubmission' }
-  | { kind: 'dreamSnapVoting' };
+  | { kind: 'dreamSnapVoting' }
+  | { kind: 'scroogeStore'; location: string | null; count: number };
 
 export function liveChecklist(facts: ChecklistFacts): ChecklistItem[] {
   const items: ChecklistItem[] = facts.moonstoneChestBiomes.map((biome) => ({
@@ -14,6 +15,8 @@ export function liveChecklist(facts: ChecklistFacts): ChecklistItem[] {
   for (const biome of facts.riftBiomes) items.push({ kind: 'rift', biome });
   if (facts.dreamSnaps?.submitNeeded) items.push({ kind: 'dreamSnapSubmission' });
   if (facts.dreamSnaps?.voteNeeded) items.push({ kind: 'dreamSnapVoting' });
+  for (const store of facts.scroogeStores)
+    items.push({ kind: 'scroogeStore', location: store.location, count: store.count });
   return items;
 }
 
@@ -27,5 +30,9 @@ export function checklistLabel(item: ChecklistItem): string {
       return 'DreamSnaps: Submit a photo';
     case 'dreamSnapVoting':
       return 'DreamSnaps: Vote';
+    case 'scroogeStore': {
+      const label = `Scrooge's Store: ${item.count} new item${item.count === 1 ? '' : 's'}`;
+      return item.location ? `${label} (${item.location})` : label;
+    }
   }
 }

@@ -159,24 +159,20 @@ fn watch_save(app: &AppHandle, path: PathBuf) -> Result<(), AppError> {
         .to_path_buf();
 
     let handler_app = app.clone();
-    let mut debouncer = new_debouncer(
-        WATCH_DEBOUNCE,
-        None,
-        move |result: DebounceEventResult| {
-            let Ok(events) = result else {
-                return;
-            };
-            let touched = events.iter().any(|event| {
-                event
-                    .paths
-                    .iter()
-                    .any(|p| p.file_name() == Some(OsStr::new(SAVE_FILE_NAME)))
-            });
-            if touched {
-                reload(&handler_app);
-            }
-        },
-    )
+    let mut debouncer = new_debouncer(WATCH_DEBOUNCE, None, move |result: DebounceEventResult| {
+        let Ok(events) = result else {
+            return;
+        };
+        let touched = events.iter().any(|event| {
+            event
+                .paths
+                .iter()
+                .any(|p| p.file_name() == Some(OsStr::new(SAVE_FILE_NAME)))
+        });
+        if touched {
+            reload(&handler_app);
+        }
+    })
     .map_err(|e| AppError::Io(e.to_string()))?;
 
     debouncer

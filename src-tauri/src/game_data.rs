@@ -427,16 +427,29 @@ fn skip_field(data: &[u8], pos: &mut usize, tag: u64) -> Option<()> {
     }
 }
 
+fn read_loc_entry(storefront: &Storefront, entry_name: &str) -> Result<Vec<u8>, super::AppError> {
+    let streaming_assets = find_streaming_assets(storefront)
+        .ok_or_else(|| super::AppError::NotFound("Could not locate game files".to_string()))?;
+    let zip_bytes = read(
+        streaming_assets
+            .join("Localization")
+            .join("LocDB_en-US.zip"),
+    )?;
+    let mut archive = ZipArchive::new(Cursor::new(zip_bytes))
+        .map_err(|e| super::AppError::Parse(e.to_string()))?;
+    let mut entry = archive.by_name(entry_name).map_err(|_| {
+        super::AppError::NotFound(format!("Could not find {} in LocDB archive", entry_name))
+    })?;
+    let mut loc_bytes = Vec::new();
+    entry
+        .read_to_end(&mut loc_bytes)
+        .map_err(|e| super::AppError::Parse(e.to_string()))?;
+    Ok(loc_bytes)
+}
+
 fn load_item_names(storefront: &Storefront) -> Result<HashMap<u32, String>, super::AppError> {
     let streaming_assets = find_streaming_assets(storefront)
         .ok_or_else(|| super::AppError::NotFound("Could not locate game files".to_string()))?;
-
-    let zip_path = streaming_assets
-        .join("Localization")
-        .join("LocDB_en-US.zip");
-    let zip_bytes = read(&zip_path)?;
-    let cursor = Cursor::new(zip_bytes);
-    let mut archive = ZipArchive::new(cursor).map_err(|e| super::AppError::Parse(e.to_string()))?;
 
     // disjoint id ranges, so merging every type into one map is collision-free
     let types = [
@@ -447,21 +460,12 @@ fn load_item_names(storefront: &Storefront) -> Result<HashMap<u32, String>, supe
     let mut names = HashMap::new();
 
     for (t, id_range) in types {
-        let item_path = streaming_assets
-            .join("itemlist")
-            .join(format!("{}.json", t));
-        let item_bytes = read(&item_path)?;
-
-        let entry_name = format!("{}.locbin", t);
-        let mut entry = archive.by_name(&entry_name).map_err(|_| {
-            super::AppError::NotFound(format!("Could not find {} in LocDB archive", entry_name))
-        })?;
-        let mut loc_bytes = Vec::new();
-        entry
-            .read_to_end(&mut loc_bytes)
-            .map_err(|e| super::AppError::Parse(e.to_string()))?;
-        let loc_map = parse_loc_map(&loc_bytes);
-
+        let item_bytes = read(
+            streaming_assets
+                .join("itemlist")
+                .join(format!("{}.json", t)),
+        )?;
+        let loc_map = parse_loc_map(&read_loc_entry(storefront, &format!("{}.locbin", t))?);
         names.extend(resolve_display_names(&item_bytes, id_range, &loc_map));
     }
 
@@ -511,6 +515,24 @@ pub fn cached_companion_links(
     let links = Arc::new(load_companion_links(storefront)?);
     *cache = Some((storefront.clone(), links.clone()));
     Ok(links)
+}
+
+static MENU_CACHE: Mutex<Option<(Storefront, Arc<HashMap<String, String>>)>> =
+    Mutex::new(None);
+
+pub(crate) fn cached_menu_labels(
+    storefront: &Storefront,
+) -> Result<Arc<HashMap<String, String>>, super::AppError> {
+    let mut cache = MENU_CACHE.lock().unwrap();
+    if let Some((cached_storefront, labels)) = cache.as_ref() {
+        if cached_storefront == storefront {
+            return Ok(labels.clone());
+        }
+    }
+
+    let labels = Arc::new(parse_loc_map(&read_loc_entry(storefront, "menu.locbin")?));
+    *cache = Some((storefront.clone(), labels.clone()));
+    Ok(labels)
 }
 
 // display names for game ids: companions, characters, and items alike

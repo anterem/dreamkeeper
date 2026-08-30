@@ -23,6 +23,12 @@ export type ChecklistFacts = {
 	moonstoneChestBiomes: (string | null)[],
 	riftBiomes: (string | null)[],
 	dreamSnaps: DreamSnaps | null,
+	scroogeStores: ScroogeStore[],
+};
+
+export type ScroogeStore = {
+	location: string | null,
+	count: number,
 };
 
 export type CollectionStatus = "inVillage" | "inRealm" | "locked";

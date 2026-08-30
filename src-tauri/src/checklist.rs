@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use serde_json::Value;
 
 use super::areas::biome_of;
@@ -18,6 +20,14 @@ pub struct ChecklistFacts {
     moonstone_chest_biomes: Vec<Option<String>>,
     rift_biomes: Vec<Option<String>>,
     dream_snaps: Option<DreamSnaps>,
+    scrooge_stores: Vec<ScroogeStore>,
+}
+
+#[derive(Clone, serde::Serialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub struct ScroogeStore {
+    location: Option<String>,
+    count: u32,
 }
 
 #[derive(Clone, serde::Serialize, specta::Type)]
@@ -33,7 +43,145 @@ pub(crate) fn collect(loaded: &LoadedSave) -> Result<ChecklistFacts, AppError> {
         moonstone_chest_biomes: placed_object_biomes(save, is_moonstone_chest),
         rift_biomes: placed_object_biomes(save, is_rift),
         dream_snaps: dream_snaps(save),
+        scrooge_stores: scrooge_stores(loaded),
     })
+}
+
+fn building_grid(save: &Value, building_id: u64) -> Option<(u64, String)> {
+    save.pointer("/World/GridCollection/Grids")
+        .and_then(|v| v.as_object())
+        .and_then(|grids| {
+            grids.iter().find_map(|(key, grid)| {
+                let grid_id = key.parse::<u64>().ok()?;
+                let has_building =
+                    grid.get("Objects")
+                        .and_then(|v| v.as_object())
+                        .is_some_and(|objects| {
+                            objects.values().any(|obj| {
+                                obj.get("ItemID").and_then(|v| v.as_u64()) == Some(building_id)
+                            })
+                        });
+                has_building.then(|| {
+                    let path = grid
+                        .get("GridDataPath")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    (grid_id, path)
+                })
+            })
+        })
+}
+
+fn grid_village(save: &Value, grid_id: u64) -> Option<u64> {
+    save.pointer("/World/Villages")
+        .and_then(|v| v.as_array())
+        .and_then(|villages| {
+            villages.iter().find(|village| {
+                village
+                    .get("Areas")
+                    .and_then(|a| a.as_object())
+                    .is_some_and(|areas| {
+                        areas.values().any(|area| {
+                            area.get("GridIDs")
+                                .and_then(|g| g.as_array())
+                                .is_some_and(|ids| {
+                                    ids.iter().any(|id| id.as_u64() == Some(grid_id))
+                                })
+                        })
+                    })
+            })
+        })
+        .and_then(|village| village.get("SceneItemId"))
+        .and_then(|v| v.as_u64())
+}
+
+fn building_zone(loaded: &LoadedSave, building_id: u64) -> Option<String> {
+    let save = &loaded.contents;
+    let (grid_id, grid_path) = building_grid(save, building_id)?;
+
+    let map_name = grid_village(save, grid_id).and_then(|scene_id| {
+        super::game_data::cached_menu_labels(&loaded.storefront)
+            .ok()
+            .and_then(|labels| labels.get(&format!("label_village_{scene_id}")).cloned())
+    });
+
+    map_name.or_else(|| biome_of(&grid_path).map(str::to_string))
+}
+
+fn scrooge_stores(loaded: &LoadedSave) -> Vec<ScroogeStore> {
+    let save = &loaded.contents;
+    let Some(stores) = save.pointer("/World/Stores").and_then(|v| v.as_array()) else {
+        return Vec::new();
+    };
+
+    let owned = owned_item_ids(save);
+    let mut result = Vec::new();
+
+    for store in stores {
+        let Some(displays) = store.get("Displays").and_then(|v| v.as_array()) else {
+            continue;
+        };
+
+        let count = displays
+            .iter()
+            .filter_map(|display| {
+                display
+                    .pointer("/DisplayInfo/Slots")
+                    .and_then(|v| v.as_array())
+            })
+            .flat_map(|slots| slots.iter())
+            .filter(|slot| {
+                slot.get("IsAvailable").and_then(|v| v.as_bool()) == Some(true)
+                    && slot
+                        .pointer("/Item/id")
+                        .and_then(|v| v.as_u64())
+                        .is_some_and(|id| !owned.contains(&id))
+            })
+            .count() as u32;
+
+        if count > 0 {
+            let location = store
+                .get("BuildingItemID")
+                .and_then(|v| v.as_u64())
+                .and_then(|id| building_zone(loaded, id));
+            result.push(ScroogeStore { location, count });
+        }
+    }
+    result
+}
+fn owned_item_ids(save: &Value) -> HashSet<u64> {
+    let Some(sets) = save
+        .pointer("/Player/CollectionSets")
+        .and_then(|v| v.as_array())
+    else {
+        return HashSet::new();
+    };
+
+    let mut owned = HashSet::new();
+    for set in sets {
+        let Some(groups) = set.get("GroupData").and_then(|v| v.as_array()) else {
+            continue;
+        };
+        for group in groups {
+            let Some(items) = group
+                .get("GroupsCollectionItems")
+                .and_then(|v| v.as_object())
+            else {
+                continue;
+            };
+            for (key, value) in items {
+                if value.as_bool() != Some(true) {
+                    continue;
+                }
+                let Ok(id) = key.parse::<u64>() else {
+                    continue;
+                };
+                owned.insert(id);
+            }
+        }
+    }
+    owned
 }
 
 fn placed_object_biomes(save: &Value, matches: fn(&Value) -> bool) -> Vec<Option<String>> {

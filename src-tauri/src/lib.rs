@@ -20,6 +20,7 @@ mod areas;
 mod checklist;
 mod critters;
 mod game_data;
+mod resets;
 mod snapshot;
 mod villagers;
 

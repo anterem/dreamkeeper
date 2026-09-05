@@ -116,9 +116,19 @@ fn scrooge_stores(loaded: &LoadedSave) -> Vec<ScroogeStore> {
     };
 
     let owned = owned_item_ids(save);
+    let reset_secs = super::resets::latest_reset_secs(
+        chrono::Utc::now().timestamp(),
+        super::read_tz_offset(save),
+        &super::resets::SCROOGE_STORE_RESET,
+    );
     let mut result = Vec::new();
 
     for store in stores {
+        let refresh_secs = super::resets::timestamp_from_field(store, "LastRefresh");
+        if !super::resets::is_after_reset(refresh_secs, reset_secs) {
+            continue;
+        }
+
         let Some(displays) = store.get("Displays").and_then(|v| v.as_array()) else {
             continue;
         };

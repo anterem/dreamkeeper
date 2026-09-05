@@ -239,39 +239,21 @@ fn dream_snaps(save: &Value) -> Option<DreamSnaps> {
     if stats.is_empty() {
         return None;
     }
-    let active = active_dreamsnaps(save);
+    let current_challenge_number =
+        super::resets::dreamsnap_current_challenge(chrono::Utc::now().timestamp());
+    let previous_challenge_number = current_challenge_number.saturating_sub(1);
     Some(DreamSnaps {
-        submit_needed: active
-            .first()
-            .is_some_and(|c| count_field(c, "SubmitCount") < 1),
-        vote_needed: active
-            .get(1)
-            .is_some_and(|c| count_field(c, "VoteCount") < DREAMSNAP_VOTE_REWARD_CAP),
+        submit_needed: dreamsnap_entry(stats, current_challenge_number)
+            .is_none_or(|c| count_field(c, "SubmitCount") < 1),
+        vote_needed: dreamsnap_entry(stats, previous_challenge_number)
+            .is_none_or(|c| count_field(c, "VoteCount") < DREAMSNAP_VOTE_REWARD_CAP),
     })
 }
 
-// newest competition for submission, second newest for voting
-fn active_dreamsnaps(save: &Value) -> Vec<&Value> {
-    let Some(stats) = save
-        .pointer("/Player/DesignChallenge/Stats")
-        .and_then(|v| v.as_object())
-    else {
-        return Vec::new();
-    };
-
-    let mut active: Vec<(u32, &Value)> = stats
+fn dreamsnap_entry(stats: &serde_json::Map<String, Value>, number: u32) -> Option<&Value> {
+    stats
         .iter()
-        .filter_map(|(key, entry)| {
-            let number = challenge_number(key)?;
-            let reward_sent = entry
-                .get("RewardMessageSent")
-                .and_then(|v| v.as_bool())
-                .unwrap_or(false);
-            (!reward_sent).then_some((number, entry))
-        })
-        .collect();
-    active.sort_by(|a, b| b.0.cmp(&a.0));
-    active.into_iter().map(|(_, entry)| entry).collect()
+        .find_map(|(key, entry)| (challenge_number(key) == Some(number)).then_some(entry))
 }
 
 fn count_field(entry: &Value, field: &str) -> u64 {

@@ -11,6 +11,17 @@ pub(crate) enum ResetSchedule {
 pub(crate) const SCROOGE_STORE_RESET: ResetSchedule =
     ResetSchedule::DailyUtc { hour: 8, minute: 0 };
 
+pub(crate) const DREAMSNAP_ANCHOR_NUMBER: u32 = 163;
+pub(crate) const DREAMSNAP_ANCHOR_START_SECS: i64 = 1788354000;
+const SECS_PER_WEEK: i64 = 604_800;
+
+// dreamsnap challenge number goes up by 1 every wed 1300 utc
+// note: challenge number is one less than wiki's count
+pub(crate) fn dreamsnap_current_challenge(now_secs: i64) -> u32 {
+    let weeks = (now_secs - DREAMSNAP_ANCHOR_START_SECS).div_euclid(SECS_PER_WEEK);
+    (DREAMSNAP_ANCHOR_NUMBER as i64 + weeks).max(0) as u32
+}
+
 pub(crate) fn latest_reset_secs(
     now_secs: i64,
     _timezone_offset_secs: i64,
